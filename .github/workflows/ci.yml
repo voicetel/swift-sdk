@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-linux:
+    name: Test (Linux, Swift 5.9)
+    runs-on: ubuntu-22.04
+    container:
+      image: swift:5.9-jammy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build -v
+
+      - name: Test with coverage
+        run: swift test --enable-code-coverage -v
+
+      - name: Coverage summary
+        run: |
+          PROF=$(find .build -name 'default.profdata' | head -1)
+          BIN=$(find .build -name '*.xctest' -type f | head -1)
+          if [ -n "$PROF" ] && [ -n "$BIN" ]; then
+            llvm-cov report "$BIN" --instr-profile="$PROF" \
+              --ignore-filename-regex='(Tests|\.build)' || true
+          else
+            echo "no coverage data found"
+          fi
+
+  test-macos:
+    name: Test (macOS, Swift 5.9)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build -v
+
+      - name: Test with coverage
+        run: swift test --enable-code-coverage -v
