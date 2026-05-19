@@ -23,9 +23,9 @@ final class MockURLProtocol: URLProtocol {
     // MARK: - State (lock-protected; accessed from URLSession's worker queue + tests)
 
     private static let lock = NSLock()
-    nonisolated(unsafe) private static var stubsQueue: [String: [Stub]] = [:]
-    nonisolated(unsafe) private static var requestLog: [URLRequest] = []
-    nonisolated(unsafe) private static var capturedBodies: [String: [Data]] = [:]
+    private static var stubsQueue: [String: [Stub]] = [:]
+    private static var requestLog: [URLRequest] = []
+    private static var capturedBodies: [String: [Data]] = [:]
 
     static func reset() {
         lock.lock()
