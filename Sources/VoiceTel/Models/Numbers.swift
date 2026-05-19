@@ -63,9 +63,9 @@ public struct NumberFaxRequest: Codable, Hashable, Sendable {
 /// Body for `PUT /v2.2/numbers/{number}/forward`.
 public struct NumberForwardRequest: Codable, Hashable, Sendable {
     /// 10-digit destination number.
-    public var destination: Int
+    public var destination: String
 
-    public init(destination: Int) {
+    public init(destination: String) {
         self.destination = destination
     }
 }

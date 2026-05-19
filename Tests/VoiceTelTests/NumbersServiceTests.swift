@@ -206,14 +206,14 @@ final class NumbersServiceTests: XCTestCase {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/numbers/2015551234/forward",
             json: envelope(#"{"number":"2015551234","forwardTo":"2125550000"}"#))
-        let r = try await client.numbers.setForward(number: "2015551234", body: NumberForwardRequest(destination: 2125550000))
+        let r = try await client.numbers.setForward(number: "2015551234", body: NumberForwardRequest(destination: "2125550000"))
         XCTAssertEqual(r.forwardTo, "2125550000")
     }
 
     func testSetForwardFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/numbers/x/forward", statusCode: 400, json: "{}")
-        do { _ = try await client.numbers.setForward(number: "x", body: NumberForwardRequest(destination: 0)); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
+        do { _ = try await client.numbers.setForward(number: "x", body: NumberForwardRequest(destination: "0")); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
 
     func testRemoveForward204() async throws {
