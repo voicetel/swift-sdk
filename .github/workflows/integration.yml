@@ -1,0 +1,21 @@
+name: integration
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-22.04
+    container:
+      image: swift:5.9-jammy
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build
+      - name: Integration tests (read-only)
+        env:
+          VOICETEL_USERNAME: ${{ secrets.VOICETEL_USERNAME }}
+          VOICETEL_PASSWORD: ${{ secrets.VOICETEL_PASSWORD }}
+        run: swift test --filter IntegrationTests -v
