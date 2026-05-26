@@ -131,6 +131,9 @@ final class Transport: @unchecked Sendable {
         let url = try buildURL(path: path, query: query)
         let bodyData = try encodeBody(body)
 
+        let idempotencyKey: String? = [.post, .put, .patch].contains(method)
+            ? UUID().uuidString : nil
+
         var attempt = 0
 
         while true {
@@ -138,12 +141,16 @@ final class Transport: @unchecked Sendable {
             request.httpMethod = method.rawValue
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("gzip", forHTTPHeaderField: "Accept-Encoding")
             if let bodyData = bodyData {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.httpBody = bodyData
             }
             if requireAuth, let key = apiKey {
                 request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+            }
+            if let key = idempotencyKey {
+                request.setValue(key, forHTTPHeaderField: "Idempotency-Key")
             }
 
             let result: (Data, URLResponse)
