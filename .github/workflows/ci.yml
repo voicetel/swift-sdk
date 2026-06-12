@@ -13,7 +13,7 @@ jobs:
     container:
       image: swift:5.9-jammy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Swift version
         run: swift --version
@@ -39,7 +39,7 @@ jobs:
     name: Test (macOS, Swift 5.9)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Swift version
         run: swift --version
