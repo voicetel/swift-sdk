@@ -78,8 +78,34 @@ final class ModelTests: XCTestCase {
                              fax: 0.0, tfAdj: 0.02, did: 0.85, mms: 0.04, sms: 0.005)
         XCTAssertEqual(r.cnam, 0.01)
         let s = AccountServices(e911: true, cnam: false, bypassMedia: false,
-                                intl: true, rcid: false, mms: true, dialer: false, sms: true)
+                                intl: true, mms: true, dialer: false, sms: true)
         XCTAssertTrue(s.e911 ?? false)
+    }
+
+    func testMessagingEnablementJobRoundTrip() throws {
+        let raw = Data("""
+        {"campaignId":"CAMP002","state":"failed","message":"carrier rejected","createdAt":"2026-10-01T12:00:00Z","updatedAt":"2026-10-01T13:00:00Z"}
+        """.utf8)
+        let job = try JSONDecoder().decode(MessagingEnablementJob.self, from: raw)
+        XCTAssertEqual(job.campaignId, "CAMP002")
+        XCTAssertEqual(job.state, "failed")
+        XCTAssertEqual(job.message, "carrier rejected")
+        // Symmetric encode.
+        let re = try JSONEncoder().encode(job)
+        let again = try JSONDecoder().decode(MessagingEnablementJob.self, from: re)
+        XCTAssertEqual(again.state, "failed")
+    }
+
+    func testCampaignDcaCodable() throws {
+        let raw = Data("""
+        {"electionComplete":false,"electedCarriers":null,"carriers":[{"carrier":"Verizon Wireless","status":"REJECTED","detail":"Campaign rejected","updatedAt":"2026-10-02T09:30:00Z"}]}
+        """.utf8)
+        let dca = try JSONDecoder().decode(CampaignDca.self, from: raw)
+        XCTAssertFalse(dca.electionComplete)
+        XCTAssertNil(dca.electedCarriers)
+        XCTAssertEqual(dca.carriers.count, 1)
+        XCTAssertEqual(dca.carriers[0].carrier, "Verizon Wireless")
+        XCTAssertEqual(dca.carriers[0].status, "REJECTED")
     }
 
     func testInventoryQueryDefaults() {

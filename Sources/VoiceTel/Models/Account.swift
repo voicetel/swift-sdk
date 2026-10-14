@@ -48,7 +48,6 @@ public struct AccountServices: Codable, Hashable, Sendable {
     public var cnam: Bool?
     public var bypassMedia: Bool?
     public var intl: Bool?
-    public var rcid: Bool?
     public var mms: Bool?
     public var dialer: Bool?
     public var sms: Bool?
@@ -58,7 +57,6 @@ public struct AccountServices: Codable, Hashable, Sendable {
         cnam: Bool? = nil,
         bypassMedia: Bool? = nil,
         intl: Bool? = nil,
-        rcid: Bool? = nil,
         mms: Bool? = nil,
         dialer: Bool? = nil,
         sms: Bool? = nil
@@ -67,7 +65,6 @@ public struct AccountServices: Codable, Hashable, Sendable {
         self.cnam = cnam
         self.bypassMedia = bypassMedia
         self.intl = intl
-        self.rcid = rcid
         self.mms = mms
         self.dialer = dialer
         self.sms = sms

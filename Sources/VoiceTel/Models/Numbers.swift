@@ -176,6 +176,27 @@ public struct CampaignBinding: Codable, Hashable, Sendable {
     public var upstreamCnpId: String
 }
 
+/// Enablement-job state. One of `"queued"`, `"hosting"`, `"assigning"`,
+/// `"routing"`, `"done"`, or `"failed"`.
+public typealias MessagingEnablementJobState = String
+
+/// State of an asynchronous (path C) enablement.
+///
+/// Attached to a campaign assignment (status `"pending"`) or surfaced by
+/// `GET /v2.2/numbers/{number}/messaging` while provisioning is in flight.
+public struct MessagingEnablementJob: Codable, Hashable, Sendable {
+    public var campaignId: String
+    /// `queued -> hosting -> assigning -> routing -> done`, or `failed`
+    /// (see ``message``). The number keeps its previous routing until done.
+    public var state: MessagingEnablementJobState
+    /// Latest progress note, or the reason for failure.
+    public var message: String
+    /// ISO 8601 timestamp the job was created.
+    public var createdAt: String
+    /// ISO 8601 timestamp of the latest progress update.
+    public var updatedAt: String
+}
+
 /// Messaging-routing state for one number.
 public struct NumberMessagingState: Codable, Hashable, Sendable {
     public var number: String
@@ -184,9 +205,11 @@ public struct NumberMessagingState: Codable, Hashable, Sendable {
     public var carrier: Int
     public var routeIn: Int
     public var resource: String
-    /// `"A"`, `"B"`, or `nil`.
+    /// `"A"`, `"B"`, `"C"`, or `nil`.
     public var network: String?
     public var campaign: CampaignBinding?
+    /// Async path-C enablement in progress for this number; `nil` when none.
+    public var pending: MessagingEnablementJob?
 }
 
 /// Response for `POST /v2.2/numbers`.
@@ -260,19 +283,44 @@ public struct NumberTranslationData: Codable, Hashable, Sendable {
 }
 
 /// Response for `PUT /v2.2/numbers/{number}/messaging-campaign`.
+///
+/// Result of binding a single number to a 10DLC campaign: status `"enabled"`
+/// (path B, bound synchronously), `"already"` (the number was already bound to
+/// this campaign — idempotent no-op), or `"pending"` (path C, provisioned
+/// asynchronously — poll `GET /v2.2/numbers/{number}/messaging` (`pending`)
+/// until the job's state is `done` or `failed`).
 public struct NumberMessagingCampaignAssignData: Codable, Hashable, Sendable {
     public var number: String
     public var campaignId: String
-    /// `17` = path A, `19` = path B.
+    /// `"enabled"`, `"already"`, or `"pending"`.
+    public var status: String
+    /// `19` = path B, `1` = path C. For a pending path-C enablement the
+    /// number keeps its current routing until provisioning completes.
     public var carrier: Int
-    /// `"A"`, `"B"`, or `nil`.
+    /// `"B"`, `"C"`, or `nil`.
     public var network: String?
-    /// `CAMP004` = path A, `CAMP003` = path B.
+    /// `CAMP003` = path B, `BANDW` = path C.
     public var upstreamCnpId: String?
-    /// `"A"`, `"B"`, `"unknown"`, or `nil`.
+    /// `"A"`, `"B"`, or `nil`.
     public var previousNetwork: String?
     /// `true` if a prior binding was disabled.
     public var previousNetworkCleared: Bool
+    /// `true` when the number was already bound to this campaign on the
+    /// target messaging path; records are reconciled and no new network
+    /// order is placed.
+    public var alreadyAssigned: Bool
+    /// Network order id created for a path-B assignment; string or integer
+    /// on the wire. `nil` for path C (see ``job``), idempotent no-ops, and
+    /// assignments confirmed without a new order.
+    public var orderId: JSONValue?
+    /// Non-fatal condition detected during the assignment (for example a
+    /// stale registration on the other messaging path whose removal has
+    /// been requested).
+    public var warning: String?
+    /// Human-readable note for a pending enablement.
+    public var message: String?
+    /// Async path-C enablement job; `nil` unless status is `"pending"`.
+    public var job: MessagingEnablementJob?
 }
 
 /// Response for `DELETE /v2.2/numbers/{number}/messaging-campaign`.
@@ -311,7 +359,16 @@ public struct NumbersMessagingListData: Codable, Hashable, Sendable {
 }
 
 /// Response for `PATCH /v2.2/numbers/{number}/port-out-pin`.
+///
+/// The call is idempotent: a PIN is locked for 30 days once set, so a number
+/// that already has one returns it unchanged with `changed == false`.
 public struct PortOutPinUpdateData: Codable, Hashable, Sendable {
+    /// Ten-digit telephone number whose PIN is reported.
     public var number: String
+    /// The port-out PIN now on file for this number (the value just set, or
+    /// the existing value if the number was already locked).
     public var portOutPin: String
+    /// `true` if this request set the PIN; `false` if the number already had
+    /// one, which is locked for 30 days once set and is returned unchanged.
+    public var changed: Bool
 }

@@ -244,7 +244,6 @@ public struct PortSummary: Codable, Hashable, Sendable {
     public var foc: String?
     public var createdAt: String?
     public var message: String?
-    public var supportUrl: String?
 }
 
 /// Full record for a single port-in.
@@ -279,6 +278,7 @@ public struct OrderFailedEntry: Codable, Hashable, Sendable {
 /// Response for `POST /v2.2/orders`.
 public struct OrderCreateData: Codable, Hashable, Sendable {
     public var orderId: String
+    /// Amount deducted from the account balance.
     public var amountCharged: Double
     public var numbersOrdered: [String]
     public var failed: [OrderFailedEntry]?

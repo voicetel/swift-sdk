@@ -106,10 +106,16 @@ final class MessagingServiceTests: XCTestCase {
         MockURLProtocol.enqueueJSON(
             method: "GET",
             path: "/v2.2/messaging/campaigns",
-            json: envelope(#"{"campaigns":[{"id":"C12345A","status":"ACTIVE","numbers":["2015550123"]}]}"#)
+            json: envelope(#"{"campaigns":[{"id":"C12345A","status":"CAMPAIGN_DCA_COMPLETE","numbers":["2015550123"],"dca":{"electionComplete":true,"electedCarriers":["AT&T","T-Mobile","Verizon Wireless"],"carriers":[{"carrier":"T-Mobile","status":"ACTIVE","detail":"Campaign approved","updatedAt":"2026-10-01T12:00:00Z"}]}},{"id":"C999","status":"CAMPAIGN_INVALID_ID","numbers":[],"dca":null}]}"#)
         )
         let r = try await client.messaging.campaignStatus()
-        XCTAssertEqual(r.campaigns[0].status, "ACTIVE")
+        XCTAssertEqual(r.campaigns[0].status, "CAMPAIGN_DCA_COMPLETE")
+        XCTAssertTrue(r.campaigns[0].dca?.electionComplete ?? false)
+        XCTAssertEqual(r.campaigns[0].dca?.electedCarriers?.count, 3)
+        XCTAssertEqual(r.campaigns[0].dca?.carriers.first?.carrier, "T-Mobile")
+        XCTAssertEqual(r.campaigns[0].dca?.carriers.first?.status, "ACTIVE")
+        XCTAssertEqual(r.campaigns[0].dca?.carriers.first?.detail, "Campaign approved")
+        XCTAssertNil(r.campaigns[1].dca)
     }
 
     func testCampaignStatusFailure() async {
@@ -150,10 +156,11 @@ final class MessagingServiceTests: XCTestCase {
         MockURLProtocol.enqueueJSON(
             method: "GET",
             path: "/v2.2/numbers/messaging",
-            json: envelope(#"{"numbers":[{"number":"2015550123","enabled":true,"carrier":17,"routeIn":1,"resource":"w","network":"A"}]}"#)
+            json: envelope(#"{"numbers":[{"number":"2015550123","enabled":true,"carrier":17,"routeIn":1,"resource":"w","network":"A","pending":{"campaignId":"CAMP002","state":"routing","message":"Routing order submitted","createdAt":"2026-10-01T12:00:00Z","updatedAt":"2026-10-01T12:10:00Z"}}]}"#)
         )
         let r = try await client.messaging.numbersState()
         XCTAssertEqual(r.numbers[0].number, "2015550123")
+        XCTAssertEqual(r.numbers[0].pending?.state, "routing")
 
         // No query string when numbers is empty.
         let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""

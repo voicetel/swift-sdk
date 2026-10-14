@@ -271,9 +271,11 @@ final class NumbersServiceTests: XCTestCase {
     func testGetMessaging() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/numbers/2015550123/messaging",
-            json: envelope(#"{"number":"2015550123","enabled":true,"carrier":17,"routeIn":1,"resource":"w","network":"A","campaign":null}"#))
+            json: envelope(#"{"number":"2015550123","enabled":true,"carrier":1,"routeIn":1,"resource":"w","network":"C","campaign":null,"pending":{"campaignId":"CAMP002","state":"hosting","message":"Hosting order submitted","createdAt":"2026-10-01T12:00:00Z","updatedAt":"2026-10-01T12:05:00Z"}}"#))
         let r = try await client.numbers.getMessaging(number: "2015550123")
-        XCTAssertEqual(r.network, "A")
+        XCTAssertEqual(r.network, "C")
+        XCTAssertEqual(r.pending?.campaignId, "CAMP002")
+        XCTAssertEqual(r.pending?.state, "hosting")
     }
 
     func testGetMessagingFailure() async {
@@ -296,12 +298,39 @@ final class NumbersServiceTests: XCTestCase {
         do { _ = try await client.numbers.patchMessaging(number: "x", body: NumberMessagingPatchRequest()); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
 
-    func testAssignCampaign() async throws {
+    func testAssignCampaignPending() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/numbers/2015550123/messaging-campaign",
-            json: envelope(#"{"number":"2015550123","campaignId":"CAMP123","carrier":17,"network":"A","upstreamCnpId":"CAMP004","previousNetwork":null,"previousNetworkCleared":false}"#))
-        let r = try await client.numbers.assignCampaign(number: "2015550123", body: NumberCampaignAssignRequest(campaignId: "CAMP123"))
-        XCTAssertEqual(r.network, "A")
+            json: envelope(#"{"number":"2015550123","campaignId":"CAMP002","status":"pending","carrier":1,"network":"C","upstreamCnpId":"BANDW","previousNetwork":null,"previousNetworkCleared":false,"alreadyAssigned":false,"orderId":null,"warning":"stale registration on path A","message":"provisioning started","job":{"campaignId":"CAMP002","state":"queued","message":"Job accepted","createdAt":"2026-10-01T12:00:00Z","updatedAt":"2026-10-01T12:00:00Z"}}"#))
+        let r = try await client.numbers.assignCampaign(number: "2015550123", body: NumberCampaignAssignRequest(campaignId: "CAMP002"))
+        XCTAssertEqual(r.status, "pending")
+        XCTAssertEqual(r.network, "C")
+        XCTAssertEqual(r.carrier, 1)
+        XCTAssertEqual(r.upstreamCnpId, "BANDW")
+        XCTAssertFalse(r.alreadyAssigned)
+        XCTAssertNil(r.previousNetwork)
+        XCTAssertNil(r.orderId)
+        XCTAssertEqual(r.warning, "stale registration on path A")
+        XCTAssertEqual(r.message, "provisioning started")
+        XCTAssertEqual(r.job?.state, "queued")
+        XCTAssertEqual(r.job?.campaignId, "CAMP002")
+    }
+
+    func testAssignCampaignAlready() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/numbers/2015550123/messaging-campaign",
+            json: envelope(#"{"number":"2015550123","campaignId":"CAMP002","status":"already","carrier":19,"network":"B","upstreamCnpId":"CAMP003","previousNetwork":"A","previousNetworkCleared":true,"alreadyAssigned":true,"orderId":12345,"warning":null,"message":null,"job":null}"#))
+        let r = try await client.numbers.assignCampaign(number: "2015550123", body: NumberCampaignAssignRequest(campaignId: "CAMP002"))
+        XCTAssertEqual(r.status, "already")
+        XCTAssertTrue(r.alreadyAssigned)
+        XCTAssertEqual(r.previousNetwork, "A")
+        XCTAssertTrue(r.previousNetworkCleared)
+        XCTAssertNil(r.job)
+        if case .int(let i)? = r.orderId {
+            XCTAssertEqual(i, 12345)
+        } else {
+            XCTFail("expected int orderId")
+        }
     }
 
     func testAssignCampaignFailure() async {
@@ -341,9 +370,10 @@ final class NumbersServiceTests: XCTestCase {
     func testSetPortOutPin() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "PATCH", path: "/v2.2/numbers/2015550123/port-out-pin",
-            json: envelope(#"{"number":"2015550123","portOutPin":"1234"}"#))
+            json: envelope(#"{"number":"2015550123","portOutPin":"1234","changed":true}"#))
         let r = try await client.numbers.setPortOutPin(number: "2015550123", body: PortOutPinUpdateRequest(pin: "1234"))
         XCTAssertEqual(r.portOutPin, "1234")
+        XCTAssertTrue(r.changed)
     }
 
     func testSetPortOutPinFailure() async {

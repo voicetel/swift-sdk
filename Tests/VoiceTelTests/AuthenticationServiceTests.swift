@@ -67,8 +67,8 @@ final class AuthenticationServiceTests: XCTestCase {
 
     func testAuthTypeConstants() {
         XCTAssertEqual(AuthType.digest, 0)
-        XCTAssertEqual(AuthType.ipAuth, 1)
-        XCTAssertEqual(AuthType.digestOrIP, 2)
-        XCTAssertEqual(AuthType.digestAndIP, 3)
+        XCTAssertEqual(AuthType.lax, 1)
+        XCTAssertEqual(AuthType.ip, 2)
+        XCTAssertEqual(AuthType.strict, 3)
     }
 }

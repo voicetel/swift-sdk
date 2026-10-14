@@ -11,14 +11,14 @@ import Foundation
 /// ``AuthGetData/authType``:
 ///
 /// - `0` = Digest
-/// - `1` = IP Auth
-/// - `2` = Digest OR IP
-/// - `3` = Digest AND IP
+/// - `1` = Lax (Digest | IP)
+/// - `2` = IP
+/// - `3` = Strict (Digest + IP)
 public enum AuthType {
     public static let digest = 0
-    public static let ipAuth = 1
-    public static let digestOrIP = 2
-    public static let digestAndIP = 3
+    public static let lax = 1
+    public static let ip = 2
+    public static let strict = 3
 }
 
 /// Body for `PUT /v2.2/auth`. Optional fields are `nil` to leave unchanged.

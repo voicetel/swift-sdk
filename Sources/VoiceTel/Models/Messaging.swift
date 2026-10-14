@@ -60,7 +60,9 @@ public struct MessagingBrandCreateRequest: Codable, Hashable, Sendable {
 
 /// Body for `POST /v2.2/messaging/campaigns`.
 ///
-/// `campaignClassName` and `campaignStartDate` are auto-populated if omitted.
+/// Body passed through to the campaign registration service.
+/// `campaignClassName` (from the campaign registry) and `campaignStartDate`
+/// (today) are auto-populated if omitted.
 public struct MessagingCampaignCreateRequest: Codable, Hashable, Sendable {
     public var messagingBrandId: String
     public var externalCampaignId: String
@@ -181,12 +183,43 @@ public struct MessagingCampaignCreateData: Codable, Hashable, Sendable {
     public var result: CampaignRegistrationResult
 }
 
+/// One carrier's latest DCA decision in ``CampaignDca``.
+public struct CampaignDcaCarrier: Codable, Hashable, Sendable {
+    public var carrier: String
+    /// `ACTIVE`, `REJECTED`, `SUSPENDED`, `UNSUSPENDED`, or `TERMINATED`.
+    public var status: String
+    /// The reviewer's note, as given.
+    public var detail: String
+    /// ISO 8601 timestamp of the decision.
+    public var updatedAt: String
+}
+
+/// Carrier (DCA) review progress for a campaign.
+///
+/// `nil` for `CAMPAIGN_INVALID_ID` statuses.
+public struct CampaignDca: Codable, Hashable, Sendable {
+    /// `true` once every carrier has a DCA assigned to review the campaign.
+    public var electionComplete: Bool
+    /// Carriers with a DCA assigned so far; `nil` when unavailable.
+    public var electedCarriers: [String]?
+    /// Each carrier DCA decision received, latest per carrier.
+    public var carriers: [CampaignDcaCarrier]
+}
+
 /// A single campaign and its currently-bound numbers.
 public struct CampaignStatusItem: Codable, Hashable, Sendable {
     public var id: String
-    /// CSP status: `ACTIVE`, `CAMPAIGN_DCA_COMPLETE`, etc.
+    /// CSP status: `CAMPAIGN_DCA_COMPLETE` (ready: carrier review finished,
+    /// numbers assigned), `CAMPAIGN_DCA_COMPLETE_NO_NUMBERS_ASSIGNED`,
+    /// `CAMPAIGN_PENDING_DCA` (active at the campaign registry, but carrier
+    /// (DCA) review is not finished yet; numbers cannot be enabled until it
+    /// is), `CAMPAIGN_DCA_REJECTED` (a carrier's DCA rejected or suspended
+    /// the campaign; see ``dca``), `CAMPAIGN_<registry status>`, or
+    /// `CAMPAIGN_INVALID_ID`.
     public var status: String
     public var numbers: [String]
+    /// Carrier (DCA) review progress; `nil` for `CAMPAIGN_INVALID_ID`.
+    public var dca: CampaignDca?
 }
 
 /// Response for `GET /v2.2/messaging/campaigns`.
