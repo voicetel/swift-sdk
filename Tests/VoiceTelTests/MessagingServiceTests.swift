@@ -187,4 +187,82 @@ final class MessagingServiceTests: XCTestCase {
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
+
+    // v2.2.15: messaging-health endpoints have no response schema in the spec, so the
+    // SDK returns the decoded JSON as a loosely-typed JSONValue; bodies/query are shaped.
+    func testHealth() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET", path: "/v2.2/messaging/health",
+            json: envelope(#"{"summary":{"numbers":3,"healthy":2}}"#)
+        )
+        let r = try await client.messaging.health()
+        guard case .object(let root) = r,
+              case .object(let summary) = root["summary"] ?? .null,
+              case .int(let numbers) = summary["numbers"] ?? .null else {
+            return XCTFail("expected summary.numbers int")
+        }
+        XCTAssertEqual(numbers, 3)
+    }
+
+    func testHealthAlerts() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET", path: "/v2.2/messaging/health/alerts",
+            json: envelope(#"{"enabled":true}"#)
+        )
+        let r = try await client.messaging.healthAlerts()
+        guard case .object(let obj) = r, case .bool(let enabled) = obj["enabled"] ?? .null else {
+            return XCTFail("expected {enabled: bool}")
+        }
+        XCTAssertTrue(enabled)
+    }
+
+    func testSetHealthAlerts() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "PUT", path: "/v2.2/messaging/health/alerts",
+            json: envelope(#"{"enabled":false}"#)
+        )
+        let r = try await client.messaging.setHealthAlerts(enabled: false)
+        guard case .object(let obj) = r, case .bool(let enabled) = obj["enabled"] ?? .null else {
+            return XCTFail("expected {enabled: bool}")
+        }
+        XCTAssertFalse(enabled)
+        let dict = bodyDict(MockURLProtocol.capturedBody(method: "PUT", path: "/v2.2/messaging/health/alerts"))
+        XCTAssertEqual(dict["enabled"] as? Bool, false)
+    }
+
+    func testHealthCheck() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "POST", path: "/v2.2/messaging/health/check",
+            json: envelope(#"{"number":"2125550123","inService":true}"#)
+        )
+        let r = try await client.messaging.healthCheck(number: "2125550123")
+        guard case .object(let obj) = r, case .bool(let inService) = obj["inService"] ?? .null else {
+            return XCTFail("expected {inService: bool}")
+        }
+        XCTAssertTrue(inService)
+        let dict = bodyDict(MockURLProtocol.capturedBody(method: "POST", path: "/v2.2/messaging/health/check"))
+        XCTAssertEqual(dict["number"] as? String, "2125550123")
+    }
+
+    func testHealthSamples() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET", path: "/v2.2/messaging/health/samples",
+            json: envelope(#"{"samples":[{"reason":"spam"}]}"#)
+        )
+        let r = try await client.messaging.healthSamples(number: "2125550123")
+        guard case .object(let obj) = r,
+              case .array(let samples) = obj["samples"] ?? .null,
+              case .object(let first) = samples.first ?? .null,
+              case .string(let reason) = first["reason"] ?? .null else {
+            return XCTFail("expected samples[0].reason string")
+        }
+        XCTAssertEqual(reason, "spam")
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("number=2125550123"))
+    }
 }

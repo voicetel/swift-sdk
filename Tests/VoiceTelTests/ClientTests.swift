@@ -203,8 +203,8 @@ final class ClientTests: XCTestCase {
     }
 
     func testVersionConstants() {
-        XCTAssertEqual(VoiceTel.sdkVersion, "2.2.14")
-        XCTAssertEqual(VoiceTel.apiVersion, "v2.2.14")
+        XCTAssertEqual(VoiceTel.sdkVersion, "2.2.15")
+        XCTAssertEqual(VoiceTel.apiVersion, "v2.2.15")
         XCTAssertEqual(VoiceTel.defaultBaseURL, "https://api.voicetel.com")
         XCTAssertTrue(VoiceTel.defaultUserAgent.contains("voicetel-swift/"))
     }

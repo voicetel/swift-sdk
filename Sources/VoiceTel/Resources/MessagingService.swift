@@ -52,4 +52,58 @@ public final class MessagingService: @unchecked Sendable {
         ]
         return try await transport.request(.get, path: "/v2.2/numbers/messaging", query: q, responseType: NumbersMessagingListData.self)
     }
+
+    /// `GET /v2.2/messaging/health` — account-wide messaging health overview.
+    ///
+    /// Mirrors the portal Messaging tab: summary counts (numbers, messaging on,
+    /// healthy, needing attention, in progress), campaigns with carrier-review
+    /// progress, numbers needing attention (each with a plain-language title, detail
+    /// and the actions that fix it), 14 days of delivery counts, and the alert-email
+    /// setting. Updated hourly.
+    ///
+    /// The API spec defines no response schema for this endpoint, so the decoded JSON
+    /// is returned as a loosely-typed ``JSONValue``.
+    public func health() async throws -> JSONValue {
+        try await transport.request(.get, path: "/v2.2/messaging/health", responseType: JSONValue.self)
+    }
+
+    /// `GET /v2.2/messaging/health/alerts` — the alert-email setting: whether new
+    /// messaging problems are emailed to the account.
+    ///
+    /// The spec defines no response schema, so the decoded JSON is returned as a
+    /// loosely-typed ``JSONValue``.
+    public func healthAlerts() async throws -> JSONValue {
+        try await transport.request(.get, path: "/v2.2/messaging/health/alerts", responseType: JSONValue.self)
+    }
+
+    /// `PUT /v2.2/messaging/health/alerts` — turn alert emails on or off.
+    ///
+    /// When enabled, the account is emailed as new messaging problems are found (at
+    /// most one digest about every 20 hours). The spec defines no response schema, so
+    /// the decoded JSON is returned as a loosely-typed ``JSONValue``.
+    public func setHealthAlerts(enabled: Bool) async throws -> JSONValue {
+        try await transport.request(.put, path: "/v2.2/messaging/health/alerts", body: ["enabled": enabled], responseType: JSONValue.self)
+    }
+
+    /// `POST /v2.2/messaging/health/check` — live health check of one number.
+    ///
+    /// Reports in service, messaging enabled, campaign approved, assigned to the
+    /// campaign by the messaging provider, delivery failures in the last 24 hours, and
+    /// enablement in progress. Limited to 30 checks per hour per account. The spec
+    /// defines no response schema, so the decoded JSON is returned as a loosely-typed
+    /// ``JSONValue``.
+    public func healthCheck(number: String) async throws -> JSONValue {
+        try await transport.request(.post, path: "/v2.2/messaging/health/check", body: ["number": number], responseType: JSONValue.self)
+    }
+
+    /// `GET /v2.2/messaging/health/samples` — recent messages blocked as spam.
+    ///
+    /// Up to 3 recent outbound messages from the number that carriers blocked as spam
+    /// (time, masked recipient, text, reason), to help review content. The spec defines
+    /// no response schema, so the decoded JSON is returned as a loosely-typed
+    /// ``JSONValue``.
+    public func healthSamples(number: String) async throws -> JSONValue {
+        let q: [String: String?] = ["number": number]
+        return try await transport.request(.get, path: "/v2.2/messaging/health/samples", query: q, responseType: JSONValue.self)
+    }
 }

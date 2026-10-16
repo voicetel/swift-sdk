@@ -2,7 +2,7 @@
 
 The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all with Swift Concurrency and strongly-typed `Codable` models.
 
-![Version](https://img.shields.io/badge/version-2.2.14-blue)
+![Version](https://img.shields.io/badge/version-2.2.15-blue)
 ![Swift](https://img.shields.io/badge/swift-5.9%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
@@ -44,7 +44,7 @@ The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/
 - **Account** — profile, sub-accounts, CDRs, credits, payments, MRC, registration, password recovery.
 - **e911** — record provisioning, address validation, lookup, removal.
 - **Gateways** — list, create, update, delete, view bound numbers.
-- **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state.
+- **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state, and messaging health (account overview, per-number live check, spam-blocked samples, alert-email setting).
 - **Lookups** — CNAM and LRN dips.
 - **iNumbering** — inventory search, coverage queries, number orders, port-in submissions, port-out availability.
 - **Support** — ticket create / read / update / delete, threaded messages, replies.
@@ -70,7 +70,7 @@ Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/voicetel/swift-sdk", from: "2.2.14")
+    .package(url: "https://github.com/voicetel/swift-sdk", from: "2.2.15")
 ],
 targets: [
     .target(name: "App", dependencies: [
@@ -84,7 +84,7 @@ Or via Xcode: **File ▸ Add Packages…** and paste `https://github.com/voicete
 ### CocoaPods
 
 ```ruby
-pod 'VoiceTel', '~> 2.2.14'
+pod 'VoiceTel', '~> 2.2.15'
 ```
 
 Requires Swift 5.9+ and one of: macOS 12+, iOS 15+, tvOS 15+, watchOS 8+, or any Linux distribution supported by the official Swift toolchain.
