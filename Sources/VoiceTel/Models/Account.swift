@@ -171,17 +171,18 @@ public struct AccountMrcData: Codable, Hashable, Sendable {
 public struct AccountRegistrationData: Codable, Hashable, Sendable {
     public var agent: String?
     public var uri: String?
-    public var expires: Int?
 }
 
 /// Body for `POST /v2.2/account` (admin-only sub-account creation).
 public struct AccountAddRequest: Codable, Hashable, Sendable {
-    public var username: Int
+    /// 10-digit numeric username.
+    public var username: String
     public var name: String
     public var email: String
-    public var masterAccount: Int?
+    /// Billing account. Defaults to `username`.
+    public var masterAccount: String?
 
-    public init(username: Int, name: String, email: String, masterAccount: Int? = nil) {
+    public init(username: String, name: String, email: String, masterAccount: String? = nil) {
         self.username = username
         self.name = name
         self.email = email
@@ -280,8 +281,12 @@ public struct AccountRecoverData: Codable, Hashable, Sendable {
 }
 
 /// Response for `POST /v2.2/account/api-key`.
+///
+/// The spec marks nothing on this payload as required, so ``apiKey`` is
+/// optional; ``VoiceTelClient/login(username:password:)`` treats a missing or
+/// empty key as an authentication failure.
 public struct AccountApiKeyData: Codable, Hashable, Sendable {
-    public var apiKey: String
+    public var apiKey: String?
 
     enum CodingKeys: String, CodingKey {
         // Wire field is "apikey" (all lowercase).

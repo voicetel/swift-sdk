@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.homepage         = 'https://github.com/voicetel/swift-sdk'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 'VoiceTel' => 'support@voicetel.com' }
-  s.source           = { :git => 'https://github.com/voicetel/swift-sdk.git', :tag => "#{s.version}" }
+  s.source           = { :git => 'https://github.com/voicetel/swift-sdk.git', :tag => "v#{s.version}" }
   s.documentation_url = 'https://voicetel.com/docs/api/v2.2/'
 
   s.swift_version    = '5.9'

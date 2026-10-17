@@ -118,8 +118,9 @@ public final class VoiceTelClient: @unchecked Sendable {
 
     /// Exchanges username + password for a 32-hex API key and installs it on this client.
     ///
-    /// The exchange counts against the 6 req/hour/IP rate limit shared by every
-    /// account/* endpoint (CDR, MRC, payments, registration, api-key).
+    /// The exchange counts against the 6 req/hour/IP rate limit shared by
+    /// `GET /v2.2/account`, `GET /v2.2/account/cdr`,
+    /// `GET /v2.2/account/recurring-charges`, and this endpoint.
     @discardableResult
     public func login(username: String, password: String) async throws -> String {
         let body = LoginRequest(username: username, password: password)
@@ -130,15 +131,15 @@ public final class VoiceTelClient: @unchecked Sendable {
             requireAuth: false,
             responseType: AccountApiKeyData.self
         )
-        guard !data.apiKey.isEmpty else {
+        guard let apiKey = data.apiKey, !apiKey.isEmpty else {
             throw APIError(
                 kind: .authentication,
                 statusCode: 200,
                 message: "api-key response did not contain data.apikey"
             )
         }
-        transport.setApiKey(data.apiKey)
-        return data.apiKey
+        transport.setApiKey(apiKey)
+        return apiKey
     }
 }
 

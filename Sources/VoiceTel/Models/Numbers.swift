@@ -140,15 +140,6 @@ public struct PortOutPinUpdateRequest: Codable, Hashable, Sendable {
     }
 }
 
-/// Body for `DELETE /v2.2/numbers/messaging-campaign`.
-public struct BulkUnassignRequest: Codable, Hashable, Sendable {
-    public var numbers: [String]
-
-    public init(numbers: [String]) {
-        self.numbers = numbers
-    }
-}
-
 // MARK: - Responses
 
 /// Per-number routing/feature state returned by `GET /v2.2/numbers` and

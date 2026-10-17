@@ -71,15 +71,19 @@ final class ACLServiceTests: XCTestCase {
             path: "/v2.2/acl",
             json: envelope(#"{"removed":[{"cidr":"1.2.3.4/32"}]}"#)
         )
-        let resp = try await client.acl.remove(AclModifyRequest(acl: [CidrEntry(cidr: "1.2.3.4/32")]))
+        let resp = try await client.acl.remove(cidrs: ["1.2.3.4/32"])
         XCTAssertEqual(resp.removed[0].cidr, "1.2.3.4/32")
+        // cidrs go on the query string; no request body.
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("cidrs=1.2.3.4%2F32") || url.contains("cidrs=1.2.3.4/32"))
+        XCTAssertNil(MockURLProtocol.capturedBody(method: "DELETE", path: "/v2.2/acl"))
     }
 
     func testRemoveFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/acl", statusCode: 404, json: "{}")
         do {
-            _ = try await client.acl.remove(AclModifyRequest(acl: []))
+            _ = try await client.acl.remove(cidrs: [])
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }

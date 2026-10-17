@@ -12,12 +12,12 @@ public final class MessagingService: @unchecked Sendable {
     let transport: Transport
     init(transport: Transport) { self.transport = transport }
 
-    /// `GET /v2.2/messages` — message history with optional filters.
-    public func history(options: HistoryOptions = HistoryOptions()) async throws -> MessageHistoryData {
+    /// `GET /v2.2/messages` — message history for a number. `options.number` is required.
+    public func history(options: HistoryOptions) async throws -> MessageHistoryData {
         let q: [String: String?] = [
             "number": options.number,
-            "start": options.start.map(String.init),
-            "end": options.end.map(String.init),
+            "from": options.from.map(String.init),
+            "to": options.to.map(String.init),
             "type": options.type
         ]
         return try await transport.request(.get, path: "/v2.2/messages", query: q, responseType: MessageHistoryData.self)
@@ -33,9 +33,13 @@ public final class MessagingService: @unchecked Sendable {
         try await transport.request(.post, path: "/v2.2/messaging/brands", body: body, responseType: MessagingBrandCreateData.self)
     }
 
-    /// `GET /v2.2/messaging/campaigns` — current 10DLC campaign statuses.
-    public func campaignStatus() async throws -> MessagingCampaignStatusData {
-        try await transport.request(.get, path: "/v2.2/messaging/campaigns", responseType: MessagingCampaignStatusData.self)
+    /// `GET /v2.2/messaging/campaigns` — current 10DLC campaign statuses for the
+    /// given campaign ids (comma-separated on the wire, max 100). Required.
+    public func campaignStatus(ids: [String]) async throws -> MessagingCampaignStatusData {
+        let q: [String: String?] = [
+            "ids": ids.joined(separator: ",")
+        ]
+        return try await transport.request(.get, path: "/v2.2/messaging/campaigns", query: q, responseType: MessagingCampaignStatusData.self)
     }
 
     /// `POST /v2.2/messaging/campaigns` — register a 10DLC campaign.
@@ -43,12 +47,13 @@ public final class MessagingService: @unchecked Sendable {
         try await transport.request(.post, path: "/v2.2/messaging/campaigns", body: body, responseType: MessagingCampaignCreateData.self)
     }
 
-    /// `GET /v2.2/numbers/messaging` — messaging state for many numbers at once.
+    /// `GET /v2.2/numbers/messaging` — messaging state for the given numbers.
     ///
-    /// Pass an empty array for "all numbers on the account".
-    public func numbersState(numbers: [String] = []) async throws -> NumbersMessagingListData {
+    /// The `numbers` query parameter is required by the API (comma-separated on
+    /// the wire, max 1000).
+    public func numbersState(numbers: [String]) async throws -> NumbersMessagingListData {
         let q: [String: String?] = [
-            "numbers": numbers.isEmpty ? nil : numbers.joined(separator: ",")
+            "numbers": numbers.joined(separator: ",")
         ]
         return try await transport.request(.get, path: "/v2.2/numbers/messaging", query: q, responseType: NumbersMessagingListData.self)
     }

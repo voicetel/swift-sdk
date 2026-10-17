@@ -9,13 +9,14 @@ import Foundation
 
 /// Operations under the `Account` tag.
 ///
-/// **Rate limit:** `cdr`, `recurringCharges`, `payments`, `registration`, and
+/// **Rate limit:** `GET /v2.2/account`, `GET /v2.2/account/cdr`,
+/// `GET /v2.2/account/recurring-charges`, and
 /// ``VoiceTelClient/login(username:password:)`` share a 6 req/hour/IP cap.
 public final class AccountService: @unchecked Sendable {
     let transport: Transport
     init(transport: Transport) { self.transport = transport }
 
-    /// `GET /v2.2/account` — authenticated account profile.
+    /// `GET /v2.2/account` — authenticated account profile. Rate-limited.
     public func get() async throws -> AccountData {
         try await transport.request(.get, path: "/v2.2/account", responseType: AccountData.self)
     }
@@ -30,9 +31,9 @@ public final class AccountService: @unchecked Sendable {
         try await transport.request(.post, path: "/v2.2/account", body: body, responseType: AccountAddData.self)
     }
 
-    /// `POST /v2.2/accounts` — public self-service signup.
+    /// `POST /v2.2/accounts` — public self-service signup. No auth required.
     public func signup(_ body: AccountSignupRequest) async throws -> AccountSignupData {
-        try await transport.request(.post, path: "/v2.2/accounts", body: body, responseType: AccountSignupData.self)
+        try await transport.request(.post, path: "/v2.2/accounts", body: body, requireAuth: false, responseType: AccountSignupData.self)
     }
 
     /// `GET /v2.2/account/cdr` — call detail records in `[start, end]` Unix seconds.
@@ -46,8 +47,12 @@ public final class AccountService: @unchecked Sendable {
     }
 
     /// `GET /v2.2/account/credits` — full credit history, newest first.
-    public func credits() async throws -> AccountCreditsData {
-        try await transport.request(.get, path: "/v2.2/account/credits", responseType: AccountCreditsData.self)
+    ///
+    /// `status` filters by paid/unpaid state (`"paid"` or `"unpaid"`); `nil`
+    /// returns everything.
+    public func credits(status: String? = nil) async throws -> AccountCreditsData {
+        let q: [String: String?] = ["status": status]
+        return try await transport.request(.get, path: "/v2.2/account/credits", query: q, responseType: AccountCreditsData.self)
     }
 
     /// `GET /v2.2/account/recurring-charges` — active monthly-recurring charges. Rate-limited.
@@ -55,12 +60,12 @@ public final class AccountService: @unchecked Sendable {
         try await transport.request(.get, path: "/v2.2/account/recurring-charges", responseType: AccountMrcData.self)
     }
 
-    /// `GET /v2.2/account/payments` — full payment history, newest first. Rate-limited.
+    /// `GET /v2.2/account/payments` — full payment history, newest first.
     public func payments() async throws -> AccountPaymentsData {
         try await transport.request(.get, path: "/v2.2/account/payments", responseType: AccountPaymentsData.self)
     }
 
-    /// `GET /v2.2/account/registration` — current SIP registration. Rate-limited.
+    /// `GET /v2.2/account/registration` — current SIP registration.
     public func registration() async throws -> AccountRegistrationData {
         try await transport.request(.get, path: "/v2.2/account/registration", responseType: AccountRegistrationData.self)
     }

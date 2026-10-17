@@ -141,7 +141,8 @@ final class Transport: @unchecked Sendable {
             request.httpMethod = method.rawValue
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            request.setValue("gzip", forHTTPHeaderField: "Accept-Encoding")
+            // No explicit Accept-Encoding: URLSession negotiates compression itself
+            // and transparently decompresses; forcing "gzip" here would disable that.
             if let bodyData = bodyData {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.httpBody = bodyData
@@ -177,7 +178,7 @@ final class Transport: @unchecked Sendable {
             }
 
             if Self.retryableStatuses.contains(http.statusCode) && attempt < maxRetries {
-                let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
+                let retryAfter = Self.parseRetryAfter(http.value(forHTTPHeaderField: "Retry-After"))
                 try await backoff(attempt: attempt, retryAfter: retryAfter)
                 attempt += 1
                 continue
@@ -318,22 +319,27 @@ final class Transport: @unchecked Sendable {
     // MARK: - Errors / backoff
 
     private func parseErrorResponse(status: Int, data: Data) -> APIError {
-        var code: String?
+        var code: Int?
         var message: String?
         var body: Any?
         if !data.isEmpty,
            let object = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) {
             body = object
             if let dict = object as? [String: Any] {
-                if let c = dict["code"] as? String {
-                    code = c
-                } else if let e = dict["error"] as? String {
-                    code = e
+                // Spec error envelope: {"status":"error","error":{"code":<int>,"message":<string>}}
+                if let err = dict["error"] as? [String: Any] {
+                    if let c = err["code"] as? Int {
+                        code = c
+                    } else if let c = err["code"] as? NSNumber {
+                        code = c.intValue
+                    }
+                    if let m = err["message"] as? String {
+                        message = m
+                    }
                 }
-                if let m = dict["message"] as? String {
+                // Tolerate a bare {"message": "..."} body.
+                if message == nil, let m = dict["message"] as? String {
                     message = m
-                } else if let e = dict["error"] as? String {
-                    message = e
                 }
             }
         } else if let str = String(data: data, encoding: .utf8) {
@@ -343,10 +349,29 @@ final class Transport: @unchecked Sendable {
         return APIError.from(statusCode: status, code: code, message: finalMessage, body: body)
     }
 
-    private func backoff(attempt: Int, retryAfter: Int?) async throws {
+    /// Parses a `Retry-After` header value into seconds from now. Supports both
+    /// the delta-seconds form and the HTTP-date form (RFC 7231 IMF-fixdate).
+    static func parseRetryAfter(_ header: String?) -> TimeInterval? {
+        guard let header = header?.trimmingCharacters(in: .whitespaces), !header.isEmpty else { return nil }
+        if let secs = Int(header) {
+            return secs >= 0 ? TimeInterval(secs) : nil
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "GMT")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        if let date = formatter.date(from: header) {
+            return max(0, date.timeIntervalSinceNow)
+        }
+        return nil
+    }
+
+    private func backoff(attempt: Int, retryAfter: TimeInterval?) async throws {
         let delay: TimeInterval
         if let secs = retryAfter, secs >= 0 {
-            delay = TimeInterval(secs)
+            // Honor Retry-After, but never sleep longer than the 8s cap the
+            // exponential backoff uses.
+            delay = min(secs, 8.0)
         } else {
             // Exponential capped at 8s: 0.5, 1, 2, 4, 8...
             let base: Double = 0.5
@@ -357,6 +382,21 @@ final class Transport: @unchecked Sendable {
         let nanos = UInt64(delay * 1_000_000_000)
         try await Task.sleep(nanoseconds: nanos)
     }
+}
+
+/// RFC 3986 unreserved characters — the only characters allowed through
+/// unescaped when encoding a single URL path segment.
+private let pathSegmentAllowedCharacters: CharacterSet = {
+    var set = CharacterSet()
+    set.insert(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+    return set
+}()
+
+/// Percent-encodes one URL path segment against the strict RFC 3986
+/// unreserved set (`CharacterSet.urlPathAllowed` leaves `/`, `?`, and friends
+/// unescaped, which would corrupt the path).
+func encodePathSegment(_ value: String) -> String {
+    value.addingPercentEncoding(withAllowedCharacters: pathSegmentAllowedCharacters) ?? value
 }
 
 // MARK: - AnyEncodable

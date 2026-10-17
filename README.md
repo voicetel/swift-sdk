@@ -2,7 +2,7 @@
 
 The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all with Swift Concurrency and strongly-typed `Codable` models.
 
-![Version](https://img.shields.io/badge/version-2.2.15-blue)
+![Version](https://img.shields.io/badge/version-2.2.16-blue)
 ![Swift](https://img.shields.io/badge/swift-5.9%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
@@ -27,7 +27,7 @@ The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/
 ## ✨ Features
 
 ### 🛡️ Strongly Typed End-to-End
-- **Native Swift `Codable` structs** for every one of the 73 API operations — JSON encoded with `Foundation.JSONEncoder`, no reflection magic.
+- **Native Swift `Codable` structs** for every one of the 79 API operations — JSON encoded with `Foundation.JSONEncoder`, no reflection magic.
 - **Optionals for nullable request fields** — `Bool?` / `Int?` / `String?` distinguish "not set" from "zero" cleanly when PATCH-ing.
 - **Optionals for nullable response fields** — `forwardTo: String?` lets you tell apart "no forward configured" from an empty destination.
 - **Async / await throughout.** Every method is `async throws`; cancellation propagates from `Task` down to the HTTP layer.
@@ -115,7 +115,7 @@ Or, if you already have an API key:
 ```swift
 let client = VoiceTelClient(apiKey: "32hex...")
 
-let coverage = try await client.iNumbering.coverage(query: CoverageQuery(state: "NJ"))
+let coverage = try await client.iNumbering.coverage(query: CoverageQuery(countBy: .state, locState: "NJ"))
 for bucket in coverage.coverage {
     print("\(bucket.npa ?? "")-\(bucket.nxx ?? ""): \(bucket.count) TNs available")
 }
@@ -144,7 +144,7 @@ let key = try await client.login(username: "1000000001", password: "hunter2")
 | Authentication | `client.authentication` | `try await client.authentication.update(AuthPutRequest(authType: 1))`    |
 | e911           | `client.e911`           | `try await client.e911.validate(E911AddressRequest(...))`                |
 | Gateways       | `client.gateways`       | `try await client.gateways.list()`                                       |
-| iNumbering     | `client.iNumbering`     | `try await client.iNumbering.searchInventory(query: InventoryQuery(npa: 201))` |
+| iNumbering     | `client.iNumbering`     | `try await client.iNumbering.searchInventory(query: InventoryQuery(tnMask: "201"))` |
 | Lookups        | `client.lookups`        | `try await client.lookups.lrn(number: "2015550123", ani: "2015550100")`  |
 | Messaging      | `client.messaging`      | `try await client.messaging.send(MessageSendRequest(...))`               |
 | Numbers        | `client.numbers`        | `try await client.numbers.assignCampaign(number: "2015550123", body: ...)` |
@@ -236,9 +236,9 @@ These endpoints are limited to **6 requests per hour per IP**:
 - `GET /v2.2/account` (`client.account.get()`)
 - `GET /v2.2/account/cdr` (`client.account.cdr(start:end:)`)
 - `GET /v2.2/account/recurring-charges` (`client.account.recurringCharges()`)
-- `GET /v2.2/account/payments` (`client.account.payments()`)
-- `GET /v2.2/account/registration` (`client.account.registration()`)
 - `POST /v2.2/account/api-key` (`client.login(username:password:)`)
+
+Additionally, `POST /v2.2/messaging/health/check` (`client.messaging.healthCheck(number:)`) is limited to **30 checks per hour per account**.
 
 The SDK automatically retries 429 responses with `Retry-After` honored, up to `maxRetries` attempts (default 2). To bump it:
 

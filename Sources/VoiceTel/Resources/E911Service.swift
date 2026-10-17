@@ -33,16 +33,16 @@ public final class E911Service: @unchecked Sendable {
 
     /// `GET /v2.2/e911/{dn}` — fetch the e911 record for `dn`.
     public func get(dn: String) async throws -> E911RecordData {
-        try await transport.request(.get, path: "/v2.2/e911/\(dn)", responseType: E911RecordData.self)
+        try await transport.request(.get, path: "/v2.2/e911/\(encodePathSegment(dn))", responseType: E911RecordData.self)
     }
 
     /// `PUT /v2.2/e911/{dn}` — provision e911 for `dn` using a previously-validated address.
     public func provision(dn: String, body: E911ProvisionByIDRequest) async throws -> E911RecordData {
-        try await transport.request(.put, path: "/v2.2/e911/\(dn)", body: body, responseType: E911RecordData.self)
+        try await transport.request(.put, path: "/v2.2/e911/\(encodePathSegment(dn))", body: body, responseType: E911RecordData.self)
     }
 
     /// `DELETE /v2.2/e911/{dn}` — remove the e911 record for `dn`. Returns 204 No Content.
     public func remove(dn: String) async throws {
-        try await transport.requestVoid(.delete, path: "/v2.2/e911/\(dn)")
+        try await transport.requestVoid(.delete, path: "/v2.2/e911/\(encodePathSegment(dn))")
     }
 }

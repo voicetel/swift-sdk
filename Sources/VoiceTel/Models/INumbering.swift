@@ -323,42 +323,71 @@ public struct PortAvailabilityData: Codable, Hashable, Sendable {
     public var reason: String?
 }
 
+/// Aggregation dimension for ``CoverageQuery/countBy``.
+public enum CoverageCountBy: String, Codable, Hashable, Sendable {
+    case state
+    case city
+    case rateCenter
+    case npanxx
+    case block
+}
+
 /// Query filters for ``INumberingService/searchInventory(query:)``.
 public struct InventoryQuery: Hashable, Sendable {
-    public var npa: Int?
-    public var nxx: Int?
-    public var state: String?
+    /// Required. Prefix or wildcard pattern: `201`, `201555`, `201555*`.
+    public var tnMask: String
+    /// Maximum results, 1–1000. Defaults to 10 server-side.
+    public var quantity: Int?
+    /// Limit results to this 2-letter US state or Canadian province code.
+    public var province: String?
+    /// Rate-center name.
     public var rateCenter: String?
-    public var contains: String?
-    public var endsWith: String?
-    public var limit: Int?
+    /// LATA code.
+    public var lata: String?
 
     public init(
-        npa: Int? = nil,
-        nxx: Int? = nil,
-        state: String? = nil,
+        tnMask: String,
+        quantity: Int? = nil,
+        province: String? = nil,
         rateCenter: String? = nil,
-        contains: String? = nil,
-        endsWith: String? = nil,
-        limit: Int? = nil
+        lata: String? = nil
     ) {
-        self.npa = npa
-        self.nxx = nxx
-        self.state = state
+        self.tnMask = tnMask
+        self.quantity = quantity
+        self.province = province
         self.rateCenter = rateCenter
-        self.contains = contains
-        self.endsWith = endsWith
-        self.limit = limit
+        self.lata = lata
     }
 }
 
 /// Query filters for ``INumberingService/coverage(query:)``.
 public struct CoverageQuery: Hashable, Sendable {
-    public var state: String?
-    public var rateCenter: String?
+    /// Required. Aggregation dimension.
+    public var countBy: CoverageCountBy
+    /// Filter: state or province code (e.g. `NJ`).
+    public var locState: String?
+    /// Filter: city name.
+    public var city: String?
+    /// Filter: rate-center abbreviation.
+    public var rcAbbre: String?
+    /// Filter: area code.
+    public var npa: String?
+    /// Filter: LATA code.
+    public var lata: String?
 
-    public init(state: String? = nil, rateCenter: String? = nil) {
-        self.state = state
-        self.rateCenter = rateCenter
+    public init(
+        countBy: CoverageCountBy,
+        locState: String? = nil,
+        city: String? = nil,
+        rcAbbre: String? = nil,
+        npa: String? = nil,
+        lata: String? = nil
+    ) {
+        self.countBy = countBy
+        self.locState = locState
+        self.city = city
+        self.rcAbbre = rcAbbre
+        self.npa = npa
+        self.lata = lata
     }
 }

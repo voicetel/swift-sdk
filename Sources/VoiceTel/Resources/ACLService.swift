@@ -23,8 +23,10 @@ public final class ACLService: @unchecked Sendable {
     }
 
     /// `DELETE /v2.2/acl` — remove one or more CIDR entries.
-    /// Returns a body (200) — not 204 No Content.
-    public func remove(_ body: AclModifyRequest) async throws -> AclRemoveData {
-        try await transport.request(.delete, path: "/v2.2/acl", body: body, responseType: AclRemoveData.self)
+    /// No request body: the entries are sent as the required `cidrs` query
+    /// parameter (comma-separated). Returns a body (200) — not 204 No Content.
+    public func remove(cidrs: [String]) async throws -> AclRemoveData {
+        let q: [String: String?] = ["cidrs": cidrs.joined(separator: ",")]
+        return try await transport.request(.delete, path: "/v2.2/acl", query: q, responseType: AclRemoveData.self)
     }
 }

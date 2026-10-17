@@ -13,24 +13,26 @@ public final class INumberingService: @unchecked Sendable {
     init(transport: Transport) { self.transport = transport }
 
     /// `GET /v2.2/inventory` — search available TNs.
-    public func searchInventory(query q: InventoryQuery = InventoryQuery()) async throws -> InventorySearchData {
+    public func searchInventory(query q: InventoryQuery) async throws -> InventorySearchData {
         let params: [String: String?] = [
-            "npa": q.npa.map(String.init),
-            "nxx": q.nxx.map(String.init),
-            "state": q.state,
-            "ratecenter": q.rateCenter,
-            "contains": q.contains,
-            "endswith": q.endsWith,
-            "limit": q.limit.map(String.init)
+            "tnMask": q.tnMask,
+            "quantity": q.quantity.map(String.init),
+            "province": q.province,
+            "rateCenter": q.rateCenter,
+            "lata": q.lata
         ]
         return try await transport.request(.get, path: "/v2.2/inventory", query: params, responseType: InventorySearchData.self)
     }
 
     /// `GET /v2.2/inventory/coverage` — aggregated availability buckets.
-    public func coverage(query q: CoverageQuery = CoverageQuery()) async throws -> InventoryCoverageData {
+    public func coverage(query q: CoverageQuery) async throws -> InventoryCoverageData {
         let params: [String: String?] = [
-            "state": q.state,
-            "ratecenter": q.rateCenter
+            "countBy": q.countBy.rawValue,
+            "locState": q.locState,
+            "city": q.city,
+            "rcAbbre": q.rcAbbre,
+            "npa": q.npa,
+            "lata": q.lata
         ]
         return try await transport.request(.get, path: "/v2.2/inventory/coverage", query: params, responseType: InventoryCoverageData.self)
     }
@@ -45,9 +47,10 @@ public final class INumberingService: @unchecked Sendable {
         try await transport.request(.get, path: "/v2.2/ports", responseType: PortListData.self)
     }
 
-    /// `GET /v2.2/ports/{id}` — detail for one port-in by id.
-    public func port(id: Int) async throws -> PortDetailData {
-        try await transport.request(.get, path: "/v2.2/ports/\(id)", responseType: PortDetailData.self)
+    /// `GET /v2.2/ports/{id}` — detail for one port-in by id (the 5-character
+    /// `pid` from the list response).
+    public func port(id: String) async throws -> PortDetailData {
+        try await transport.request(.get, path: "/v2.2/ports/\(encodePathSegment(id))", responseType: PortDetailData.self)
     }
 
     /// `POST /v2.2/ports` — submit a port-in order.
@@ -57,6 +60,6 @@ public final class INumberingService: @unchecked Sendable {
 
     /// `GET /v2.2/ports/availability/{number}` — port-availability check.
     public func portAvailability(number: String) async throws -> PortAvailabilityData {
-        try await transport.request(.get, path: "/v2.2/ports/availability/\(number)", responseType: PortAvailabilityData.self)
+        try await transport.request(.get, path: "/v2.2/ports/availability/\(encodePathSegment(number))", responseType: PortAvailabilityData.self)
     }
 }

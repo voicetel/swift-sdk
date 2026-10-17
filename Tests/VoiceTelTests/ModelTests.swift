@@ -109,16 +109,28 @@ final class ModelTests: XCTestCase {
     }
 
     func testInventoryQueryDefaults() {
-        let q = InventoryQuery()
-        XCTAssertNil(q.npa)
-        XCTAssertNil(q.state)
-        XCTAssertNil(q.limit)
+        let q = InventoryQuery(tnMask: "201555*")
+        XCTAssertEqual(q.tnMask, "201555*")
+        XCTAssertNil(q.quantity)
+        XCTAssertNil(q.province)
+        XCTAssertNil(q.rateCenter)
+        XCTAssertNil(q.lata)
     }
 
     func testCoverageQueryDefaults() {
-        let q = CoverageQuery()
-        XCTAssertNil(q.state)
-        XCTAssertNil(q.rateCenter)
+        let q = CoverageQuery(countBy: .state)
+        XCTAssertEqual(q.countBy, .state)
+        XCTAssertEqual(q.countBy.rawValue, "state")
+        XCTAssertNil(q.locState)
+        XCTAssertNil(q.city)
+        XCTAssertNil(q.rcAbbre)
+        XCTAssertNil(q.npa)
+        XCTAssertNil(q.lata)
+        // Wire values match the spec enum exactly.
+        XCTAssertEqual(CoverageCountBy.city.rawValue, "city")
+        XCTAssertEqual(CoverageCountBy.rateCenter.rawValue, "rateCenter")
+        XCTAssertEqual(CoverageCountBy.npanxx.rawValue, "npanxx")
+        XCTAssertEqual(CoverageCountBy.block.rawValue, "block")
     }
 
     func testPortFeatureSetters() {

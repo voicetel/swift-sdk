@@ -225,6 +225,8 @@ public struct TicketData: Codable, Hashable, Sendable {
 
 /// Response for `GET /v2.2/support/tickets`.
 public struct TicketsListData: Codable, Hashable, Sendable {
+    /// Total tickets matching the filter.
+    public var totalCount: Int?
     public var tickets: [SupportConversation]
 }
 

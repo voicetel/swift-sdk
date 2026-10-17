@@ -54,7 +54,7 @@ final class ClientTests: XCTestCase {
             method: "POST",
             path: "/v2.2/account/api-key",
             statusCode: 401,
-            json: #"{"code":"invalid_credentials","message":"bad password"}"#
+            json: #"{"status":"error","error":{"code":401,"message":"bad password"}}"#
         )
         do {
             _ = try await client.login(username: "1000000001", password: "wrong")
@@ -62,8 +62,30 @@ final class ClientTests: XCTestCase {
         } catch let error as APIError {
             XCTAssertEqual(error.kind, .authentication)
             XCTAssertEqual(error.statusCode, 401)
-            XCTAssertEqual(error.code, "invalid_credentials")
+            XCTAssertEqual(error.code, 401)
             XCTAssertEqual(error.message, "bad password")
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func testSpecErrorEnvelopeParsesNestedCodeAndMessage() async {
+        // Canonical spec shape: {"status":"error","error":{"code":<int>,"message":<string>}}
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/account",
+            statusCode: 400,
+            json: #"{"status":"error","error":{"code":400,"message":"Field Required"}}"#
+        )
+        do {
+            _ = try await client.account.get()
+            XCTFail("expected error")
+        } catch let error as APIError {
+            XCTAssertEqual(error.kind, .badRequest)
+            XCTAssertEqual(error.statusCode, 400)
+            XCTAssertEqual(error.code, 400)
+            XCTAssertEqual(error.message, "Field Required")
         } catch {
             XCTFail("unexpected error: \(error)")
         }
@@ -189,8 +211,8 @@ final class ClientTests: XCTestCase {
 
     func testAPIErrorDescriptionFormats() {
         XCTAssertEqual(
-            APIError(kind: .server, statusCode: 500, code: "boom", message: "down").errorDescription,
-            "voicetel: HTTP 500 boom: down"
+            APIError(kind: .server, statusCode: 500, code: 7, message: "down").errorDescription,
+            "voicetel: HTTP 500 7: down"
         )
         XCTAssertEqual(
             APIError(kind: .server, statusCode: 500, message: "down").errorDescription,
@@ -203,8 +225,8 @@ final class ClientTests: XCTestCase {
     }
 
     func testVersionConstants() {
-        XCTAssertEqual(VoiceTel.sdkVersion, "2.2.15")
-        XCTAssertEqual(VoiceTel.apiVersion, "v2.2.15")
+        XCTAssertEqual(VoiceTel.sdkVersion, "2.2.16")
+        XCTAssertEqual(VoiceTel.apiVersion, "v2.2.16")
         XCTAssertEqual(VoiceTel.defaultBaseURL, "https://api.voicetel.com")
         XCTAssertTrue(VoiceTel.defaultUserAgent.contains("voicetel-swift/"))
     }
@@ -215,7 +237,7 @@ final class ClientTests: XCTestCase {
             method: "GET",
             path: "/v2.2/numbers/9999999999",
             statusCode: 404,
-            json: #"{"error":"not_found","message":"no such number"}"#
+            json: #"{"status":"error","error":{"code":404,"message":"no such number"}}"#
         )
         do {
             _ = try await client.numbers.get(number: "9999999999")
@@ -223,7 +245,7 @@ final class ClientTests: XCTestCase {
         } catch let error as APIError {
             XCTAssertEqual(error.kind, .notFound)
             XCTAssertEqual(error.statusCode, 404)
-            XCTAssertEqual(error.code, "not_found")
+            XCTAssertEqual(error.code, 404)
             XCTAssertEqual(error.message, "no such number")
             XCTAssertNotNil(error.body)
         } catch {

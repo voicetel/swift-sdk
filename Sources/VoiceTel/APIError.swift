@@ -34,7 +34,8 @@ public struct APIError: LocalizedError, @unchecked Sendable {
         case notFound
         /// HTTP 409 — request conflicts with current state.
         case conflict
-        /// HTTP 429 — exceeded the 6/hour/IP cap on account/* endpoints.
+        /// HTTP 429 — exceeded a rate limit (e.g. the 6/hour/IP cap on the
+        /// rate-limited account endpoints, or the 30/hour health-check cap).
         case rateLimit
         /// Any HTTP 5xx.
         case server
@@ -46,8 +47,9 @@ public struct APIError: LocalizedError, @unchecked Sendable {
     /// HTTP status code. Zero when the failure happened before the response arrived.
     public let statusCode: Int
 
-    /// Server-provided error code, when one was supplied in the response body.
-    public let code: String?
+    /// Server-provided numeric error code, from the
+    /// `{"status":"error","error":{"code":…,"message":…}}` envelope (when present).
+    public let code: Int?
 
     /// Human-readable message extracted from the response (or a fallback).
     public let message: String
@@ -61,7 +63,7 @@ public struct APIError: LocalizedError, @unchecked Sendable {
     public init(
         kind: Kind = .unknown,
         statusCode: Int = 0,
-        code: String? = nil,
+        code: Int? = nil,
         message: String,
         body: Any? = nil,
         underlying: Error? = nil
@@ -75,7 +77,7 @@ public struct APIError: LocalizedError, @unchecked Sendable {
     }
 
     public var errorDescription: String? {
-        if let code = code, !code.isEmpty {
+        if let code = code {
             return "voicetel: HTTP \(statusCode) \(code): \(message)"
         }
         if statusCode == 0 {
@@ -103,7 +105,7 @@ public struct APIError: LocalizedError, @unchecked Sendable {
     public static func isConflict(_ error: Error) -> Bool { isKind(error, .conflict) }
 
     /// Build an APIError given an HTTP status, optional code/message, and a parsed body.
-    static func from(statusCode: Int, code: String?, message: String, body: Any?) -> APIError {
+    static func from(statusCode: Int, code: Int?, message: String, body: Any?) -> APIError {
         APIError(
             kind: kindFromStatus(statusCode),
             statusCode: statusCode,

@@ -343,28 +343,35 @@ final class NumbersServiceTests: XCTestCase {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/numbers/2015550123/messaging-campaign",
             json: envelope(#"{"number":"2015550123","campaignId":"CAMP123","network":"A","upstreamCnpId":"CAMP004","unassigned":true}"#))
-        let r = try await client.numbers.unassignCampaign(number: "2015550123")
+        let r = try await client.numbers.unassignCampaign(number: "2015550123", campaignId: "CAMP123")
         XCTAssertTrue(r.unassigned)
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("campaignId=CAMP123"))
     }
 
     func testUnassignCampaignFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/numbers/x/messaging-campaign", statusCode: 404, json: "{}")
-        do { _ = try await client.numbers.unassignCampaign(number: "x"); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
+        do { _ = try await client.numbers.unassignCampaign(number: "x", campaignId: "c"); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
 
     func testBulkUnassignCampaign() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/numbers/messaging-campaign",
             json: envelope(#"{"campaignId":"CAMP123","network":"A","upstreamCnpId":"CAMP004","unassignedNumbers":["2015550123"]}"#))
-        let r = try await client.numbers.bulkUnassignCampaign(numbers: ["2015550123"])
+        let r = try await client.numbers.bulkUnassignCampaign(numbers: ["2015550123"], campaignId: "CAMP123")
         XCTAssertEqual(r.unassignedNumbers, ["2015550123"])
+        // numbers + campaignId go on the query string; no request body.
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("numbers=2015550123"))
+        XCTAssertTrue(url.contains("campaignId=CAMP123"))
+        XCTAssertNil(MockURLProtocol.capturedBody(method: "DELETE", path: "/v2.2/numbers/messaging-campaign"))
     }
 
     func testBulkUnassignCampaignFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/numbers/messaging-campaign", statusCode: 400, json: "{}")
-        do { _ = try await client.numbers.bulkUnassignCampaign(numbers: []); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
+        do { _ = try await client.numbers.bulkUnassignCampaign(numbers: [], campaignId: "c"); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
 
     func testSetPortOutPin() async throws {

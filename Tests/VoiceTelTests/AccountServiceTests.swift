@@ -71,14 +71,15 @@ final class AccountServiceTests: XCTestCase {
             method: "PUT",
             path: "/v2.2/account",
             statusCode: 400,
-            json: #"{"code":"bad_field","message":"invalid timezone"}"#
+            json: #"{"status":"error","error":{"code":400,"message":"invalid timezone"}}"#
         )
         do {
             _ = try await client.account.update(AccountPutRequest(timezone: "nope"))
             XCTFail("expected error")
         } catch let error as APIError {
             XCTAssertEqual(error.kind, .badRequest)
-            XCTAssertEqual(error.code, "bad_field")
+            XCTAssertEqual(error.code, 400)
+            XCTAssertEqual(error.message, "invalid timezone")
         } catch {
             XCTFail("unexpected: \(error)")
         }
@@ -91,7 +92,7 @@ final class AccountServiceTests: XCTestCase {
             path: "/v2.2/account",
             json: envelope(#"{"username":"1000000002","password":"genpw","email":"x@y.z"}"#)
         )
-        let resp = try await client.account.add(AccountAddRequest(username: 1000000002, name: "Sub", email: "x@y.z"))
+        let resp = try await client.account.add(AccountAddRequest(username: "1000000002", name: "Sub", email: "x@y.z"))
         XCTAssertEqual(resp.username, "1000000002")
         XCTAssertEqual(resp.password, "genpw")
     }
@@ -105,7 +106,7 @@ final class AccountServiceTests: XCTestCase {
             json: #"{"message":"not admin"}"#
         )
         do {
-            _ = try await client.account.add(AccountAddRequest(username: 1, name: "n", email: "e"))
+            _ = try await client.account.add(AccountAddRequest(username: "1", name: "n", email: "e"))
             XCTFail("expected error")
         } catch let error as APIError {
             XCTAssertEqual(error.kind, .permissionDenied)
@@ -123,6 +124,8 @@ final class AccountServiceTests: XCTestCase {
         )
         let resp = try await client.account.signup(AccountSignupRequest(name: "N", email: "e@e.e"))
         XCTAssertEqual(resp.username, "1000000003")
+        // Signup is public — no Authorization header even though the client has a key.
+        XCTAssertNil(MockURLProtocol.allRequests().first?.value(forHTTPHeaderField: "Authorization"))
     }
 
     func testSignupFailure() async {
@@ -187,6 +190,18 @@ final class AccountServiceTests: XCTestCase {
         XCTAssertEqual(resp.credits.count, 1)
     }
 
+    func testCreditsStatusFilter() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/account/credits",
+            json: envelope(#"{"credits":[]}"#)
+        )
+        _ = try await client.account.credits(status: "unpaid")
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("status=unpaid"))
+    }
+
     func testCreditsFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/account/credits", statusCode: 500, json: "{}")
@@ -249,11 +264,11 @@ final class AccountServiceTests: XCTestCase {
         MockURLProtocol.enqueueJSON(
             method: "GET",
             path: "/v2.2/account/registration",
-            json: envelope(#"{"agent":"PJSIP","uri":"sip:alice@1.2.3.4","expires":3600}"#)
+            json: envelope(#"{"agent":"PJSIP","uri":"sip:alice@1.2.3.4"}"#)
         )
         let resp = try await client.account.registration()
         XCTAssertEqual(resp.agent, "PJSIP")
-        XCTAssertEqual(resp.expires, 3600)
+        XCTAssertEqual(resp.uri, "sip:alice@1.2.3.4")
     }
 
     func testRegistrationFailure() async {

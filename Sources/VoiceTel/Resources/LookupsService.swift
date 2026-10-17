@@ -16,13 +16,13 @@ public final class LookupsService: @unchecked Sendable {
 
     /// `GET /v2.2/cnam/{number}` — CNAM dip on a 10-digit TN.
     public func cnam(number: String) async throws -> CnamData {
-        try await transport.request(.get, path: "/v2.2/cnam/\(number)", responseType: CnamData.self)
+        try await transport.request(.get, path: "/v2.2/cnam/\(encodePathSegment(number))", responseType: CnamData.self)
     }
 
     /// `GET /v2.2/lrn/{number}/{ani}` — LRN dip.
     ///
     /// `ani` is used for billing/auth — it is not echoed back in the lookup result.
     public func lrn(number: String, ani: String) async throws -> LrnLookupData {
-        try await transport.request(.get, path: "/v2.2/lrn/\(number)/\(ani)", responseType: LrnLookupData.self)
+        try await transport.request(.get, path: "/v2.2/lrn/\(encodePathSegment(number))/\(encodePathSegment(ani))", responseType: LrnLookupData.self)
     }
 }

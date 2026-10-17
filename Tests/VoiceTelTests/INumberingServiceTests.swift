@@ -19,20 +19,22 @@ final class INumberingServiceTests: XCTestCase {
             path: "/v2.2/inventory",
             json: envelope(#"{"numbers":[{"number":"2015550123","rateCenter":"NEWARK","city":"Newark","province":"NJ","lata":"224"}]}"#)
         )
-        let r = try await client.iNumbering.searchInventory(query: InventoryQuery(npa: 201, state: "NJ", limit: 10))
+        let r = try await client.iNumbering.searchInventory(query: InventoryQuery(tnMask: "201555*", quantity: 10, province: "NJ", rateCenter: "NEWARK", lata: "224"))
         XCTAssertEqual(r.numbers[0].number, "2015550123")
 
         let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
-        XCTAssertTrue(url.contains("npa=201"))
-        XCTAssertTrue(url.contains("state=NJ"))
-        XCTAssertTrue(url.contains("limit=10"))
+        XCTAssertTrue(url.contains("tnMask=201555*") || url.contains("tnMask=201555%2A"))
+        XCTAssertTrue(url.contains("quantity=10"))
+        XCTAssertTrue(url.contains("province=NJ"))
+        XCTAssertTrue(url.contains("rateCenter=NEWARK"))
+        XCTAssertTrue(url.contains("lata=224"))
     }
 
     func testSearchInventoryFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/inventory", statusCode: 400, json: "{}")
         do {
-            _ = try await client.iNumbering.searchInventory()
+            _ = try await client.iNumbering.searchInventory(query: InventoryQuery(tnMask: "201"))
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
@@ -44,15 +46,19 @@ final class INumberingServiceTests: XCTestCase {
             path: "/v2.2/inventory/coverage",
             json: envelope(#"{"coverage":[{"count":50,"npa":"201","nxx":"555"}]}"#)
         )
-        let r = try await client.iNumbering.coverage(query: CoverageQuery(state: "NJ"))
+        let r = try await client.iNumbering.coverage(query: CoverageQuery(countBy: .npanxx, locState: "NJ"))
         XCTAssertEqual(r.coverage[0].count, 50)
+
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("countBy=npanxx"))
+        XCTAssertTrue(url.contains("locState=NJ"))
     }
 
     func testCoverageFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/inventory/coverage", statusCode: 500, json: "{}")
         do {
-            _ = try await client.iNumbering.coverage()
+            _ = try await client.iNumbering.coverage(query: CoverageQuery(countBy: .state))
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
@@ -113,18 +119,18 @@ final class INumberingServiceTests: XCTestCase {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(
             method: "GET",
-            path: "/v2.2/ports/42",
-            json: envelope(#"{"port":{"status":"PENDING","id":"42","numbers":["2015550123"]}}"#)
+            path: "/v2.2/ports/y0d36",
+            json: envelope(#"{"port":{"status":"PENDING","id":"8654d228","pid":"y0d36","numbers":["2015550123"]}}"#)
         )
-        let r = try await client.iNumbering.port(id: 42)
+        let r = try await client.iNumbering.port(id: "y0d36")
         XCTAssertEqual(r.port.numbers, ["2015550123"])
     }
 
     func testPortDetailFailure() async {
         let client = makeTestClient()
-        MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/ports/42", statusCode: 404, json: "{}")
+        MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/ports/y0d36", statusCode: 404, json: "{}")
         do {
-            _ = try await client.iNumbering.port(id: 42)
+            _ = try await client.iNumbering.port(id: "y0d36")
             XCTFail("expected")
         } catch let e as APIError {
             XCTAssertEqual(e.kind, .notFound)

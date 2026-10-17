@@ -21,9 +21,15 @@ final class MessagingServiceTests: XCTestCase {
             {"number":"2015550123","type":"sms","fromTs":1,"toTs":2,"messages":[{"id":"m1","key":["alice",1700000000],"value":{"sourceNumber":"2015550123","destinationNumber":"2125550000","direction":"out","message":"hi"}}]}
             """)
         )
-        let r = try await client.messaging.history(options: HistoryOptions(number: "2015550123", type: "sms"))
+        let r = try await client.messaging.history(options: HistoryOptions(number: "2015550123", from: 1700000000, to: 1700001000, type: "sms"))
         XCTAssertEqual(r.messages.count, 1)
         XCTAssertEqual(r.messages[0].value.direction, "out")
+
+        let histURL = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(histURL.contains("number=2015550123"))
+        XCTAssertTrue(histURL.contains("from=1700000000"))
+        XCTAssertTrue(histURL.contains("to=1700001000"))
+        XCTAssertTrue(histURL.contains("type=sms"))
 
         if case .int(let i) = r.messages[0].key[1] {
             XCTAssertEqual(i, 1700000000)
@@ -41,7 +47,7 @@ final class MessagingServiceTests: XCTestCase {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/messages", statusCode: 500, json: "{}")
         do {
-            _ = try await client.messaging.history()
+            _ = try await client.messaging.history(options: HistoryOptions(number: "2015550123"))
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
@@ -108,8 +114,10 @@ final class MessagingServiceTests: XCTestCase {
             path: "/v2.2/messaging/campaigns",
             json: envelope(#"{"campaigns":[{"id":"C12345A","status":"CAMPAIGN_DCA_COMPLETE","numbers":["2015550123"],"dca":{"electionComplete":true,"electedCarriers":["AT&T","T-Mobile","Verizon Wireless"],"carriers":[{"carrier":"T-Mobile","status":"ACTIVE","detail":"Campaign approved","updatedAt":"2026-10-01T12:00:00Z"}]}},{"id":"C999","status":"CAMPAIGN_INVALID_ID","numbers":[],"dca":null}]}"#)
         )
-        let r = try await client.messaging.campaignStatus()
+        let r = try await client.messaging.campaignStatus(ids: ["C12345A", "C999"])
         XCTAssertEqual(r.campaigns[0].status, "CAMPAIGN_DCA_COMPLETE")
+        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
+        XCTAssertTrue(url.contains("ids=C12345A,C999") || url.contains("ids=C12345A%2CC999"))
         XCTAssertTrue(r.campaigns[0].dca?.electionComplete ?? false)
         XCTAssertEqual(r.campaigns[0].dca?.electedCarriers?.count, 3)
         XCTAssertEqual(r.campaigns[0].dca?.carriers.first?.carrier, "T-Mobile")
@@ -122,7 +130,7 @@ final class MessagingServiceTests: XCTestCase {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/messaging/campaigns", statusCode: 500, json: "{}")
         do {
-            _ = try await client.messaging.campaignStatus()
+            _ = try await client.messaging.campaignStatus(ids: ["C12345A"])
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
@@ -158,13 +166,13 @@ final class MessagingServiceTests: XCTestCase {
             path: "/v2.2/numbers/messaging",
             json: envelope(#"{"numbers":[{"number":"2015550123","enabled":true,"carrier":17,"routeIn":1,"resource":"w","network":"A","pending":{"campaignId":"CAMP002","state":"routing","message":"Routing order submitted","createdAt":"2026-10-01T12:00:00Z","updatedAt":"2026-10-01T12:10:00Z"}}]}"#)
         )
-        let r = try await client.messaging.numbersState()
+        let r = try await client.messaging.numbersState(numbers: ["2015550123"])
         XCTAssertEqual(r.numbers[0].number, "2015550123")
         XCTAssertEqual(r.numbers[0].pending?.state, "routing")
 
-        // No query string when numbers is empty.
+        // The numbers query parameter is required and always sent.
         let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
-        XCTAssertFalse(url.contains("?numbers="))
+        XCTAssertTrue(url.contains("numbers=2015550123"))
     }
 
     func testNumbersStateFiltered() async throws {
@@ -183,7 +191,7 @@ final class MessagingServiceTests: XCTestCase {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/numbers/messaging", statusCode: 500, json: "{}")
         do {
-            _ = try await client.messaging.numbersState()
+            _ = try await client.messaging.numbersState(numbers: ["2015550123"])
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }

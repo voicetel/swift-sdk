@@ -98,7 +98,7 @@ public struct MessageRecordValue: Codable, Hashable, Sendable {
     /// Billed rate per message (string for precision).
     public var rate: String?
     /// Far-end number (sms/mms only).
-    public var number: Int?
+    public var number: String?
     /// Message body (sms/mms only).
     public var message: String?
 }
@@ -227,26 +227,26 @@ public struct MessagingCampaignStatusData: Codable, Hashable, Sendable {
     public var campaigns: [CampaignStatusItem]
 }
 
-/// Optional query filters for ``MessagingService/history(options:)``.
+/// Query filters for ``MessagingService/history(options:)``. ``number`` is required.
 public struct HistoryOptions: Hashable, Sendable {
-    /// 10-digit TN whose history to fetch.
-    public var number: String?
-    /// Unix timestamp range start.
-    public var start: Int?
-    /// Unix timestamp range end.
-    public var end: Int?
-    /// `"sms"`, `"mms"`, or `"dlr"`.
+    /// Required. Ten-digit telephone number on the authenticated account.
+    public var number: String
+    /// Unix timestamp range start (newer). Defaults to now.
+    public var from: Int?
+    /// Unix timestamp range end (older). Defaults to 24h ago.
+    public var to: Int?
+    /// `"sms"` (default), `"mms"`, or `"dlr"` (delivery status events for sent messages).
     public var type: String?
 
     public init(
-        number: String? = nil,
-        start: Int? = nil,
-        end: Int? = nil,
+        number: String,
+        from: Int? = nil,
+        to: Int? = nil,
         type: String? = nil
     ) {
         self.number = number
-        self.start = start
-        self.end = end
+        self.from = from
+        self.to = to
         self.type = type
     }
 }

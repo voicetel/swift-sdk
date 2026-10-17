@@ -17,9 +17,10 @@ final class SupportServiceTests: XCTestCase {
         MockURLProtocol.enqueueJSON(
             method: "GET",
             path: "/v2.2/support/tickets",
-            json: envelope(#"{"tickets":[{"id":1,"number":1015,"status":"active","subject":"hi"}]}"#)
+            json: envelope(#"{"totalCount":1,"tickets":[{"id":1,"number":1015,"status":"active","subject":"hi"}]}"#)
         )
         let r = try await client.support.list()
+        XCTAssertEqual(r.totalCount, 1)
         XCTAssertEqual(r.tickets[0].ticketNumber, 1015)
         XCTAssertEqual(r.tickets[0].status, "active")
     }
