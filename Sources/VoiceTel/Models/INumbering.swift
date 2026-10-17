@@ -55,6 +55,7 @@ public struct OrderNumber: Codable, Hashable, Sendable {
 /// `{number, route}` object form for ``OrderNumber``.
 public struct OrderNumberSpec: Codable, Hashable, Sendable {
     public var number: String
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Route for numbers in this order.
     public var route: Int?
 
     public init(number: String, route: Int? = nil) {

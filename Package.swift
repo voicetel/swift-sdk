@@ -3,7 +3,7 @@
 // VoiceTel Swift SDK
 // Copyright (c) 2026 VoiceTel Communications
 //
-// The official Swift client for the VoiceTel REST API v2.2.16.
+// The official Swift client for the VoiceTel REST API v2.2.17.
 
 import PackageDescription
 

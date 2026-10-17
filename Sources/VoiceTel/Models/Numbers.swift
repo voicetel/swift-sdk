@@ -12,7 +12,7 @@ import Foundation
 /// Body for `POST /v2.2/numbers`.
 public struct NumberAddRequest: Codable, Hashable, Sendable {
     public var number: String
-    /// Gateway route ID; defaults to `4` (DID).
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Used when adding a number.
     public var route: Int?
 
     public init(number: String, route: Int? = nil) {
@@ -23,6 +23,7 @@ public struct NumberAddRequest: Codable, Hashable, Sendable {
 
 /// Body for `PUT /v2.2/numbers/{number}/route`.
 public struct NumberRouteRequest: Codable, Hashable, Sendable {
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Set with `PUT /v2.2/numbers/{number}/route`.
     public var route: Int
 
     public init(route: Int) {
@@ -147,6 +148,7 @@ public struct PortOutPinUpdateRequest: Codable, Hashable, Sendable {
 public struct NumberDetail: Codable, Hashable, Sendable {
     public var number: String
     public var translated: String
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Per-number route in the list.
     public var route: Int
     public var gateway: String?
     public var cnam: Bool
@@ -206,6 +208,7 @@ public struct NumberMessagingState: Codable, Hashable, Sendable {
 /// Response for `POST /v2.2/numbers`.
 public struct NumberAddData: Codable, Hashable, Sendable {
     public var number: String
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Returned after adding a number.
     public var route: Int
 }
 
@@ -250,12 +253,14 @@ public struct NumberMessagingPatchData: Codable, Hashable, Sendable {
 public struct NumberMoveData: Codable, Hashable, Sendable {
     public var number: String
     public var accountId: Int
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Route on the destination account after the move.
     public var route: Int
 }
 
 /// Response for `PUT /v2.2/numbers/{number}/route`.
 public struct NumberRouteData: Codable, Hashable, Sendable {
     public var number: String
+    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Echo of the applied route.
     public var route: Int
 }
 

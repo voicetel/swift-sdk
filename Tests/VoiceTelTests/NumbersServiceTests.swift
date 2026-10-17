@@ -116,7 +116,7 @@ final class NumbersServiceTests: XCTestCase {
     func testSetRouteFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/numbers/x/route", statusCode: 400, json: "{}")
-        do { _ = try await client.numbers.setRoute(number: "x", body: NumberRouteRequest(route: 0)); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
+        do { _ = try await client.numbers.setRoute(number: "x", body: NumberRouteRequest(route: 4)); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
 
     func testSetTranslation() async throws {
