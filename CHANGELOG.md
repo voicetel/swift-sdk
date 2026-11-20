@@ -12,6 +12,7 @@ Audit release tracking spec v2.2.21. Adds the Fax API and fixes the DELETE /acl 
   - `client.fax.get(id:)` — one job; poll until `status` is `sent` or `failed`.
   - `client.fax.document(id:)` — the rendered PDF as raw `Data` (binary response, not JSON).
 - The transport gained a `requestMultipart` path (prebuilt form-data bodies) and a `requestRaw` path (binary responses returned undecoded); `Idempotency-Key` can now be caller-supplied.
+- Typed error kinds for HTTP 402 (`paymentRequired` — positive balance required: fax send, directory listing) and HTTP 413 (`requestTooLarge` — upload over 8 MiB), both previously mapped to `unknown`.
 
 ### Changed
 - **Breaking:** `client.acl.remove(_:)` now sends the same `{ acl: [{ cidr }] }` JSON body as `add(_:)` — the live handler never read the old `cidrs` query parameter.
