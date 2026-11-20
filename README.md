@@ -172,9 +172,11 @@ All API errors throw a `VoiceTel.APIError`. Inspect `kind` or use the helpers:
 |----------------------|-------------|
 | `.badRequest`         | 400         |
 | `.authentication`     | 401         |
+| `.paymentRequired`    | 402         |
 | `.permissionDenied`   | 403         |
 | `.notFound`           | 404         |
 | `.conflict`           | 409         |
+| `.requestTooLarge`    | 413         |
 | `.rateLimit`          | 429         |
 | `.server`             | 5xx         |
 | `.unknown`            | other / transport |

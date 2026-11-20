@@ -190,9 +190,11 @@ final class ClientTests: XCTestCase {
     func testAPIErrorKindMapping() {
         XCTAssertEqual(APIError.kindFromStatus(400), .badRequest)
         XCTAssertEqual(APIError.kindFromStatus(401), .authentication)
+        XCTAssertEqual(APIError.kindFromStatus(402), .paymentRequired)
         XCTAssertEqual(APIError.kindFromStatus(403), .permissionDenied)
         XCTAssertEqual(APIError.kindFromStatus(404), .notFound)
         XCTAssertEqual(APIError.kindFromStatus(409), .conflict)
+        XCTAssertEqual(APIError.kindFromStatus(413), .requestTooLarge)
         XCTAssertEqual(APIError.kindFromStatus(429), .rateLimit)
         XCTAssertEqual(APIError.kindFromStatus(500), .server)
         XCTAssertEqual(APIError.kindFromStatus(599), .server)

@@ -119,8 +119,44 @@ final class FaxServiceTests: XCTestCase {
             ))
             XCTFail("expected")
         } catch let e as APIError {
+            XCTAssertEqual(e.kind, .paymentRequired)
             XCTAssertEqual(e.statusCode, 402)
             XCTAssertEqual(e.message, "Your account needs a positive balance to send faxes.")
+        } catch { XCTFail("unexpected: \(error)") }
+    }
+
+    func testSendMaps402And413ToTypedKinds() async {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "POST",
+            path: "/v2.2/faxes",
+            statusCode: 402,
+            json: #"{"status":"error","error":{"code":402,"message":"Your account needs a positive balance to send faxes."}}"#
+        )
+        MockURLProtocol.enqueueJSON(
+            method: "POST",
+            path: "/v2.2/faxes",
+            statusCode: 413,
+            json: #"{"status":"error","error":{"code":413,"message":"The documents must total 8 MiB or smaller"}}"#
+        )
+        let request = FaxSendRequest(
+            fromNumber: "2015550123",
+            toNumber: "2125550123",
+            documents: [FaxDocumentUpload(name: "x.pdf", contentType: "application/pdf", data: Self.pdfBytes)]
+        )
+        do {
+            _ = try await client.fax.send(request)
+            XCTFail("expected")
+        } catch let e as APIError {
+            XCTAssertEqual(e.kind, .paymentRequired)
+            XCTAssertEqual(e.statusCode, 402)
+        } catch { XCTFail("unexpected: \(error)") }
+        do {
+            _ = try await client.fax.send(request)
+            XCTFail("expected")
+        } catch let e as APIError {
+            XCTAssertEqual(e.kind, .requestTooLarge)
+            XCTAssertEqual(e.statusCode, 413)
         } catch { XCTFail("unexpected: \(error)") }
     }
 

@@ -28,12 +28,17 @@ public struct APIError: LocalizedError, @unchecked Sendable {
         case badRequest
         /// HTTP 401 — bearer token missing, expired, or invalid.
         case authentication
+        /// HTTP 402 — the account balance must be positive for this action
+        /// (fax send, directory-listing updates).
+        case paymentRequired
         /// HTTP 403 — authenticated but not allowed.
         case permissionDenied
         /// HTTP 404 — resource does not exist.
         case notFound
         /// HTTP 409 — request conflicts with current state.
         case conflict
+        /// HTTP 413 — the upload is too large (fax documents must total 8 MiB or smaller).
+        case requestTooLarge
         /// HTTP 429 — exceeded a rate limit (e.g. the 6/hour/IP cap on the
         /// rate-limited account endpoints, or the 30/hour health-check cap).
         case rateLimit
@@ -119,9 +124,11 @@ public struct APIError: LocalizedError, @unchecked Sendable {
         switch status {
         case 400: return .badRequest
         case 401: return .authentication
+        case 402: return .paymentRequired
         case 403: return .permissionDenied
         case 404: return .notFound
         case 409: return .conflict
+        case 413: return .requestTooLarge
         case 429: return .rateLimit
         case 500..<600: return .server
         default: return .unknown
