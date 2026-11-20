@@ -60,8 +60,11 @@ public struct LrnData: Codable, Hashable, Sendable {
 }
 
 /// Response for `GET /v2.2/lrn/{number}/{ani}`.
+///
+/// `lrn` is `nil` when the dip found no record — the response is still HTTP 200
+/// (and still billed) with `lrn:null` (spec v2.2.21).
 public struct LrnLookupData: Codable, Hashable, Sendable {
     public var ani: String
     public var destination: String
-    public var lrn: LrnData
+    public var lrn: LrnData?
 }

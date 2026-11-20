@@ -86,8 +86,24 @@ final class LookupsServiceTests: XCTestCase {
             """)
         )
         let r = try await client.lookups.lrn(number: "2015550123", ani: "2125550000")
-        XCTAssertEqual(r.lrn.state, "NJ")
-        XCTAssertEqual(r.lrn.local, "Y")
+        XCTAssertEqual(r.lrn?.state, "NJ")
+        XCTAssertEqual(r.lrn?.local, "Y")
+    }
+
+    func testLRNNullDip() async throws {
+        // v2.2.21: a failed LRN dip is 200 with lrn:null — still billed.
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/lrn/2015550123/2015550100",
+            json: envelope("""
+            {"ani":"2015550100","destination":"2015550123","lrn":null}
+            """)
+        )
+        let r = try await client.lookups.lrn(number: "2015550123", ani: "2015550100")
+        XCTAssertEqual(r.ani, "2015550100")
+        XCTAssertEqual(r.destination, "2015550123")
+        XCTAssertNil(r.lrn)
     }
 
     func testLRNFailure() async {
