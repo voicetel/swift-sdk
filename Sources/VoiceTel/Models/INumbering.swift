@@ -55,7 +55,10 @@ public struct OrderNumber: Codable, Hashable, Sendable {
 /// `{number, route}` object form for ``OrderNumber``.
 public struct OrderNumberSpec: Codable, Hashable, Sendable {
     public var number: String
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Route for numbers in this order.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route:
+    /// 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML,
+    /// 8 SDN, 9 MOBILE. Route for numbers in this order. An unknown route
+    /// fails the whole order.
     public var route: Int?
 
     public init(number: String, route: Int? = nil) {
@@ -276,12 +279,22 @@ public struct OrderFailedEntry: Codable, Hashable, Sendable {
     public var reason: String
 }
 
+/// One row in ``OrderCreateData/routes`` — the route each ordered number was
+/// placed on.
+public struct OrderRoute: Codable, Hashable, Sendable {
+    public var number: String
+    /// Gateway id or global route the number was placed on.
+    public var route: Int
+}
+
 /// Response for `POST /v2.2/orders`.
 public struct OrderCreateData: Codable, Hashable, Sendable {
     public var orderId: String
     /// Amount deducted from the account balance.
     public var amountCharged: Double
     public var numbersOrdered: [String]
+    /// The route each ordered number was placed on.
+    public var routes: [OrderRoute]?
     public var failed: [OrderFailedEntry]?
 }
 

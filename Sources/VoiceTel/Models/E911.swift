@@ -67,10 +67,10 @@ public struct E911CreateRequest: Codable, Hashable, Sendable {
 /// Body for `PUT /v2.2/e911/{dn}`.
 public struct E911ProvisionByIDRequest: Codable, Hashable, Sendable {
     public var callername: String
-    /// From `POST /v2.2/e911/validations`.
-    public var addressid: Int
+    /// From `POST /v2.2/e911/validations` — a hex string.
+    public var addressid: String
 
-    public init(callername: String, addressid: Int) {
+    public init(callername: String, addressid: String) {
         self.callername = callername
         self.addressid = addressid
     }
@@ -90,7 +90,9 @@ public struct E911Entry: Codable, Hashable, Sendable {
 
 /// Result from `POST /v2.2/e911/validations`.
 public struct E911ValidatedAddress: Codable, Hashable, Sendable {
-    public var addressid: Int
+    /// Upstream address id — a hex string; pass it back verbatim to
+    /// `PUT /v2.2/e911/{dn}`.
+    public var addressid: String
     public var address1: String
     public var address2: String?
     public var city: String

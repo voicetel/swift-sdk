@@ -34,6 +34,48 @@ final class LookupsServiceTests: XCTestCase {
         } catch { XCTFail("unexpected: \(error)") }
     }
 
+    func testCarrier() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/carrier/2015550123",
+            json: envelope(#"{"number":"2015550123","carrier":{"name":"EXAMPLE CARRIER","type":"voip","mobile_country_code":null,"mobile_network_code":null,"error_code":null}}"#)
+        )
+        let r = try await client.lookups.carrier(number: "2015550123")
+        XCTAssertEqual(r.number, "2015550123")
+        XCTAssertEqual(r.carrier.name, "EXAMPLE CARRIER")
+        XCTAssertEqual(r.carrier.type, "voip")
+        XCTAssertNil(r.carrier.mobile_country_code)
+        XCTAssertNil(r.carrier.mobile_network_code)
+        XCTAssertNil(r.carrier.error_code)
+    }
+
+    // Mobile numbers fill the snake_case mobile codes; error_code is an int.
+    func testCarrierMobileFields() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/carrier/2125550123",
+            json: envelope(#"{"number":"2125550123","carrier":{"name":"EXAMPLE MOBILE","type":"mobile","mobile_country_code":"310","mobile_network_code":"456","error_code":0}}"#)
+        )
+        let r = try await client.lookups.carrier(number: "2125550123")
+        XCTAssertEqual(r.carrier.type, "mobile")
+        XCTAssertEqual(r.carrier.mobile_country_code, "310")
+        XCTAssertEqual(r.carrier.mobile_network_code, "456")
+        XCTAssertEqual(r.carrier.error_code, 0)
+    }
+
+    func testCarrierFailure() async {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/carrier/x", statusCode: 403, json: "{}")
+        do {
+            _ = try await client.lookups.carrier(number: "x")
+            XCTFail("expected")
+        } catch let e as APIError {
+            XCTAssertEqual(e.kind, .permissionDenied)
+        } catch { XCTFail("unexpected: \(error)") }
+    }
+
     func testLRN() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(

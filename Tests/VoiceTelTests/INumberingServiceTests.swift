@@ -84,6 +84,35 @@ final class INumberingServiceTests: XCTestCase {
         XCTAssertEqual((arr[1] as? [String: Any])?["number"] as? String, "2125550000")
     }
 
+    // v2.2.20: the 201 response adds `routes` — the route each ordered number
+    // was placed on — and a route may be any gateway id on the account, not
+    // just the global 1–9.
+    func testOrderReturnsRoutesAndAcceptsGatewayIdRoute() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "POST",
+            path: "/v2.2/orders",
+            statusCode: 201,
+            json: envelope(#"{"orderId":"ord-1026","amountCharged":3.0,"numbersOrdered":["2015550100","2015550101"],"routes":[{"number":"2015550100","route":4},{"number":"2015550101","route":12}],"failed":[]}"#)
+        )
+        let r = try await client.iNumbering.order(OrderCreateRequest(numbers: [
+            OrderNumber(value: "2015550100"),
+            OrderNumber(spec: OrderNumberSpec(number: "2015550101", route: 12))
+        ]))
+        XCTAssertEqual(r.orderId, "ord-1026")
+        XCTAssertEqual(r.routes?.count, 2)
+        XCTAssertEqual(r.routes?[0].number, "2015550100")
+        XCTAssertEqual(r.routes?[0].route, 4)
+        XCTAssertEqual(r.routes?[1].number, "2015550101")
+        XCTAssertEqual(r.routes?[1].route, 12)
+
+        // The gateway-id route (12) passes through the request body verbatim.
+        let raw = MockURLProtocol.capturedBody(method: "POST", path: "/v2.2/orders")!
+        let json = try JSONSerialization.jsonObject(with: raw) as! [String: Any]
+        let arr = json["numbers"] as! [Any]
+        XCTAssertEqual((arr[1] as? [String: Any])?["route"] as? Int, 12)
+    }
+
     func testOrderFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "POST", path: "/v2.2/orders", statusCode: 409, json: "{}")

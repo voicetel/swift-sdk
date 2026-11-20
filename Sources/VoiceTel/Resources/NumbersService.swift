@@ -62,6 +62,30 @@ public final class NumbersService: @unchecked Sendable {
         try await transport.request(.put, path: "/v2.2/numbers/\(encodePathSegment(number))/lidb", body: body, responseType: NumberLidbData.self)
     }
 
+    /// `GET /v2.2/numbers/{number}/directory-listing` — 411 listing state as published.
+    public func getDirectoryListing(number: String) async throws -> DirectoryListingData {
+        try await transport.request(.get, path: "/v2.2/numbers/\(encodePathSegment(number))/directory-listing", responseType: DirectoryListingData.self)
+    }
+
+    /// `PUT /v2.2/numbers/{number}/directory-listing` — add or replace the 411 listing.
+    ///
+    /// Accepted at once and applied in the background: returns HTTP 202 with
+    /// `status` == `.pending` and the carrier `orderId`.
+    public func setDirectoryListing(number: String, body: DirectoryListingRequest) async throws -> DirectoryListingData {
+        try await transport.request(.put, path: "/v2.2/numbers/\(encodePathSegment(number))/directory-listing", body: body, responseType: DirectoryListingData.self)
+    }
+
+    /// `DELETE /v2.2/numbers/{number}/directory-listing` — remove the listing,
+    /// or cancel an add not yet applied.
+    ///
+    /// Accepted at once and applied in the background: returns HTTP 202 with
+    /// `status` == `.removing` (and the carrier `orderId`), or
+    /// `status` == `.notListed` with no `orderId` when a pending add was
+    /// cancelled.
+    public func removeDirectoryListing(number: String) async throws -> DirectoryListingData {
+        try await transport.request(.delete, path: "/v2.2/numbers/\(encodePathSegment(number))/directory-listing", responseType: DirectoryListingData.self)
+    }
+
     /// `GET /v2.2/numbers/{number}/fax` — read fax-to-email routing.
     public func getFax(number: String) async throws -> NumberFaxData {
         try await transport.request(.get, path: "/v2.2/numbers/\(encodePathSegment(number))/fax", responseType: NumberFaxData.self)

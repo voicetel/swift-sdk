@@ -12,7 +12,7 @@ import Foundation
 /// Body for `POST /v2.2/numbers`.
 public struct NumberAddRequest: Codable, Hashable, Sendable {
     public var number: String
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Used when adding a number.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Used when adding a number.
     public var route: Int?
 
     public init(number: String, route: Int? = nil) {
@@ -23,7 +23,7 @@ public struct NumberAddRequest: Codable, Hashable, Sendable {
 
 /// Body for `PUT /v2.2/numbers/{number}/route`.
 public struct NumberRouteRequest: Codable, Hashable, Sendable {
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Set with `PUT /v2.2/numbers/{number}/route`.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Set with `PUT /v2.2/numbers/{number}/route`.
     public var route: Int
 
     public init(route: Int) {
@@ -123,6 +123,9 @@ public struct NumberCampaignAssignRequest: Codable, Hashable, Sendable {
 public struct NumberMoveRequest: Codable, Hashable, Sendable {
     /// Destination account id.
     public var accountId: Int
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route:
+    /// 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML,
+    /// 8 SDN, 9 MOBILE.
     public var route: Int
 
     public init(accountId: Int, route: Int) {
@@ -141,6 +144,160 @@ public struct PortOutPinUpdateRequest: Codable, Hashable, Sendable {
     }
 }
 
+// MARK: - Directory listing (411)
+
+/// Listing type of a ``DirectoryListing`` as published: `B` (business) or
+/// `R` (residence).
+public enum DirectoryListingType: String, Codable, Hashable, Sendable {
+    /// Business — the name travels in ``DirectoryListing/name``.
+    case business = "B"
+    /// Residence — the name travels in `firstName` / `lastName`.
+    case residence = "R"
+}
+
+/// Listing type for ``DirectoryListingRequest``: `business` or `residence`.
+/// (The server also accepts the shorthand `B` / `R`.)
+public enum DirectoryListingRequestType: String, Codable, Hashable, Sendable {
+    case business
+    case residence
+}
+
+/// Listing status of a ``DirectoryListingData``.
+public enum DirectoryListingStatus: String, Codable, Hashable, Sendable {
+    /// Published.
+    case listed
+    /// None.
+    case notListed = "not_listed"
+    /// An add or change is being applied.
+    case pending
+    /// A removal is being applied.
+    case removing
+    /// The number cannot be listed.
+    case unavailable
+}
+
+/// A 411 directory listing as published (or, on PUT, as submitted).
+///
+/// `type` `B` carries the business name in ``name``; `R` carries
+/// `firstName` / `lastName`. All address fields may be empty strings.
+/// `complex` marks a multi-line listing, which is read-only through the API.
+public struct DirectoryListing: Codable, Hashable, Sendable {
+    /// `B` (business) or `R` (residence).
+    public var type: DirectoryListingType
+    /// Business name (type `B`).
+    public var name: String?
+    /// Resident's first name (type `R`).
+    public var firstName: String?
+    /// Resident's last name (type `R`).
+    public var lastName: String?
+    /// Street number.
+    public var streetNumber: String?
+    /// Street name.
+    public var streetName: String?
+    /// Street type, e.g. `St`, `Ave`.
+    public var streetType: String?
+    /// Street direction: `N`, `S`, `E`, `W`, `NE`, `NW`, `SE` or `SW`.
+    public var streetSuffix: String?
+    /// Suite or unit.
+    public var location: String?
+    /// City.
+    public var city: String?
+    /// Two-letter US state or territory code.
+    public var state: String?
+    /// 5-digit ZIP.
+    public var zip: String?
+    /// `true` for a multi-line listing; read-only through the API.
+    public var complex: Bool?
+}
+
+/// Body for `PUT /v2.2/numbers/{number}/directory-listing` — add or replace
+/// the listing.
+///
+/// A business sets ``name``; a residence sets `firstName` and `lastName`.
+/// The street is optional — give `streetNumber` and `streetName` together, or
+/// neither. `city`, `state` and `zip` are required.
+public struct DirectoryListingRequest: Codable, Hashable, Sendable {
+    /// `business` or `residence`.
+    public var type: DirectoryListingRequestType
+    /// Business name; required for business. Letters, numbers, spaces and
+    /// `& ' . , # / -`; at most 60 characters.
+    public var name: String?
+    /// Resident's first name; required for residence. At most 30 characters.
+    public var firstName: String?
+    /// Resident's last name; required for residence. At most 30 characters.
+    public var lastName: String?
+    /// Up to 10 letters or digits; give it together with `streetName`, or neither.
+    public var streetNumber: String?
+    /// Street name; give it together with `streetNumber`, or neither. At most
+    /// 40 characters.
+    public var streetName: String?
+    /// A word such as `St`, `Ave` or `Rd`. At most 10 characters.
+    public var streetType: String?
+    /// Street direction (`""`, `N`, `S`, `E`, `W`, `NE`, `NW`, `SE`, `SW`);
+    /// requires a street name.
+    public var streetSuffix: String?
+    /// Suite or unit; requires a street name. At most 30 characters.
+    public var location: String?
+    /// City the listing is at. Required.
+    public var city: String
+    /// Two-letter US state or territory code. Required.
+    public var state: String
+    /// 5-digit ZIP (a ZIP+4 is accepted and stored as the 5-digit ZIP). Required.
+    public var zip: String
+
+    public init(
+        type: DirectoryListingRequestType,
+        name: String? = nil,
+        firstName: String? = nil,
+        lastName: String? = nil,
+        streetNumber: String? = nil,
+        streetName: String? = nil,
+        streetType: String? = nil,
+        streetSuffix: String? = nil,
+        location: String? = nil,
+        city: String,
+        state: String,
+        zip: String
+    ) {
+        self.type = type
+        self.name = name
+        self.firstName = firstName
+        self.lastName = lastName
+        self.streetNumber = streetNumber
+        self.streetName = streetName
+        self.streetType = streetType
+        self.streetSuffix = streetSuffix
+        self.location = location
+        self.city = city
+        self.state = state
+        self.zip = zip
+    }
+}
+
+/// Response for `GET`/`PUT`/`DELETE /v2.2/numbers/{number}/directory-listing`.
+///
+/// PUT and DELETE are accepted (202) and applied in the background: `status`
+/// is `pending` / `removing` (or `notListed` when a pending add was
+/// cancelled) and `orderId` carries the carrier order reference. GET reports
+/// the state as published, with `eligible` telling whether a listing can be
+/// added.
+public struct DirectoryListingData: Codable, Hashable, Sendable {
+    public var number: String
+    /// `listed`: published. `notListed`: none. `pending`: an add or change is
+    /// being applied. `removing`: a removal is being applied. `unavailable`:
+    /// the number cannot be listed.
+    public var status: DirectoryListingStatus
+    /// Whether a listing can be added to this number (GET).
+    public var eligible: Bool?
+    /// The published listing, or `nil`.
+    public var listing: DirectoryListing?
+    /// A submitted listing not yet published, or `nil`.
+    public var pending: DirectoryListing?
+    /// Reference of the submitted change (PUT and DELETE), or `nil`.
+    public var orderId: String?
+}
+
+
 // MARK: - Responses
 
 /// Per-number routing/feature state returned by `GET /v2.2/numbers` and
@@ -148,7 +305,7 @@ public struct PortOutPinUpdateRequest: Codable, Hashable, Sendable {
 public struct NumberDetail: Codable, Hashable, Sendable {
     public var number: String
     public var translated: String
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Per-number route in the list.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Per-number route in the list.
     public var route: Int
     public var gateway: String?
     public var cnam: Bool
@@ -208,7 +365,7 @@ public struct NumberMessagingState: Codable, Hashable, Sendable {
 /// Response for `POST /v2.2/numbers`.
 public struct NumberAddData: Codable, Hashable, Sendable {
     public var number: String
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Returned after adding a number.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Returned after adding a number.
     public var route: Int
 }
 
@@ -253,14 +410,14 @@ public struct NumberMessagingPatchData: Codable, Hashable, Sendable {
 public struct NumberMoveData: Codable, Hashable, Sendable {
     public var number: String
     public var accountId: Int
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Route on the destination account after the move.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Route on the destination account after the move.
     public var route: Int
 }
 
 /// Response for `PUT /v2.2/numbers/{number}/route`.
 public struct NumberRouteData: Codable, Hashable, Sendable {
     public var number: String
-    /// Global route type: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Echo of the applied route.
+    /// A gateway id on this account (`GET /v2.2/gateways`) or a global route: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default), 5 T38, 6 VOICEML, 8 SDN, 9 MOBILE. Echo of the applied route.
     public var route: Int
 }
 

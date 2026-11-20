@@ -2,7 +2,7 @@
 
 The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all with Swift Concurrency and strongly-typed `Codable` models.
 
-![Version](https://img.shields.io/badge/version-2.2.17-blue)
+![Version](https://img.shields.io/badge/version-2.2.20-blue)
 ![Swift](https://img.shields.io/badge/swift-5.9%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
@@ -27,7 +27,7 @@ The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/
 ## ✨ Features
 
 ### 🛡️ Strongly Typed End-to-End
-- **Native Swift `Codable` structs** for every one of the 79 API operations — JSON encoded with `Foundation.JSONEncoder`, no reflection magic.
+- **Native Swift `Codable` structs** for every one of the 83 API operations — JSON encoded with `Foundation.JSONEncoder`, no reflection magic.
 - **Optionals for nullable request fields** — `Bool?` / `Int?` / `String?` distinguish "not set" from "zero" cleanly when PATCH-ing.
 - **Optionals for nullable response fields** — `forwardTo: String?` lets you tell apart "no forward configured" from an empty destination.
 - **Async / await throughout.** Every method is `async throws`; cancellation propagates from `Task` down to the HTTP layer.
@@ -40,12 +40,12 @@ The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/
 - **Structured `APIError`** with typed `kind` so you can `switch error.kind { case .rateLimit: ... }` without parsing HTTP status codes.
 
 ### 📞 Complete API Coverage
-- **Numbers** — list, get, add, remove, route, translate, CNAM, LIDB, fax, forward, SMS, messaging campaigns, port-out PIN, account moves.
+- **Numbers** — list, get, add, remove, route, translate, CNAM, LIDB, 411 directory listing, fax, forward, SMS, messaging campaigns, port-out PIN, account moves.
 - **Account** — profile, sub-accounts, CDRs, credits, payments, MRC, registration, password recovery.
 - **e911** — record provisioning, address validation, lookup, removal.
 - **Gateways** — list, create, update, delete, view bound numbers.
 - **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state, and messaging health (account overview, per-number live check, spam-blocked samples, alert-email setting).
-- **Lookups** — CNAM and LRN dips.
+- **Lookups** — CNAM, carrier & line type, and LRN dips.
 - **iNumbering** — inventory search, coverage queries, number orders, port-in submissions, port-out availability.
 - **Support** — ticket create / read / update / delete, threaded messages, replies.
 - **ACL** — IP allowlist management with structured 409 conflict bodies.
@@ -145,7 +145,7 @@ let key = try await client.login(username: "1000000001", password: "hunter2")
 | e911           | `client.e911`           | `try await client.e911.validate(E911AddressRequest(...))`                |
 | Gateways       | `client.gateways`       | `try await client.gateways.list()`                                       |
 | iNumbering     | `client.iNumbering`     | `try await client.iNumbering.searchInventory(query: InventoryQuery(tnMask: "201"))` |
-| Lookups        | `client.lookups`        | `try await client.lookups.lrn(number: "2015550123", ani: "2015550100")`  |
+| Lookups        | `client.lookups`        | `try await client.lookups.carrier(number: "2015550123")`                |
 | Messaging      | `client.messaging`      | `try await client.messaging.send(MessageSendRequest(...))`               |
 | Numbers        | `client.numbers`        | `try await client.numbers.assignCampaign(number: "2015550123", body: ...)` |
 | Support        | `client.support`        | `try await client.support.create(TicketCreateRequest(...))`              |

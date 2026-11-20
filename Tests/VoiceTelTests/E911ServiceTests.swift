@@ -63,10 +63,10 @@ final class E911ServiceTests: XCTestCase {
         MockURLProtocol.enqueueJSON(
             method: "POST",
             path: "/v2.2/e911/validations",
-            json: envelope(#"{"address":{"addressid":99,"address1":"1","city":"N","state":"NJ","zip":"07101"}}"#)
+            json: envelope(#"{"address":{"addressid":"123a45b678c9d012e3f45a67b890c123","address1":"1","city":"N","state":"NJ","zip":"07101"}}"#)
         )
         let r = try await client.e911.validate(E911AddressRequest(address1: "1", city: "N", state: "NJ", zip: "07101"))
-        XCTAssertEqual(r.address.addressid, 99)
+        XCTAssertEqual(r.address.addressid, "123a45b678c9d012e3f45a67b890c123")
     }
 
     func testValidateFailure() async {
@@ -107,15 +107,37 @@ final class E911ServiceTests: XCTestCase {
             path: "/v2.2/e911/2015550123",
             json: envelope(#"{"record":{"dn":"12015550123","callername":"A","address1":"1","city":"N","state":"NJ","zip":"07101"}}"#)
         )
-        let r = try await client.e911.provision(dn: "2015550123", body: E911ProvisionByIDRequest(callername: "A", addressid: 99))
+        let r = try await client.e911.provision(dn: "2015550123", body: E911ProvisionByIDRequest(callername: "A", addressid: "123a45b678c9d012e3f45a67b890c123"))
         XCTAssertEqual(r.record.callername, "A")
+    }
+
+    // v2.2.20 truth fix: addressid is a hex STRING on the wire, in both the
+    // validations response and the provision-by-id request body.
+    func testAddressidRoundTripsAsString() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "POST",
+            path: "/v2.2/e911/validations",
+            json: envelope(#"{"address":{"addressid":"123a45b678c9d012e3f45a67b890c123","address1":"1","city":"N","state":"NJ","zip":"07101"}}"#)
+        )
+        MockURLProtocol.enqueueJSON(
+            method: "PUT",
+            path: "/v2.2/e911/2015550123",
+            json: envelope(#"{"record":{"dn":"12015550123","callername":"A","address1":"1","city":"N","state":"NJ","zip":"07101"}}"#)
+        )
+        let validated = try await client.e911.validate(E911AddressRequest(address1: "1", city: "N", state: "NJ", zip: "07101"))
+        _ = try await client.e911.provision(dn: "2015550123", body: E911ProvisionByIDRequest(callername: "A", addressid: validated.address.addressid))
+
+        let dict = bodyDict(MockURLProtocol.capturedBody(method: "PUT", path: "/v2.2/e911/2015550123"))
+        // String on the wire — not a JSON number (NSNumber would fail the cast).
+        XCTAssertEqual(dict["addressid"] as? String, "123a45b678c9d012e3f45a67b890c123")
     }
 
     func testProvisionFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/e911/x", statusCode: 400, json: "{}")
         do {
-            _ = try await client.e911.provision(dn: "x", body: E911ProvisionByIDRequest(callername: "y", addressid: 0))
+            _ = try await client.e911.provision(dn: "x", body: E911ProvisionByIDRequest(callername: "y", addressid: ""))
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }

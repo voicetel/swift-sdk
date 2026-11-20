@@ -9,7 +9,9 @@ import Foundation
 
 /// Body for `POST /v2.2/messages`.
 ///
-/// `mediaUrls` being non-nil switches the message type to MMS and unlocks `subject`.
+/// `text` is required for SMS and optional for MMS, where a media-only
+/// message is valid (MMS text may be at most 2048 characters).
+/// `mediaUrls` being non-nil and non-empty switches the message type to MMS.
 ///
 /// **Wire-field note:** the API uses `fromNumber` / `toNumber` literally — these
 /// names are preserved on the wire via the property names themselves.
@@ -18,17 +20,20 @@ public struct MessageSendRequest: Codable, Hashable, Sendable {
     public var fromNumber: String
     /// 10-digit destination TN.
     public var toNumber: String
-    /// UTF-8 message body.
-    public var text: String
-    /// MMS only.
+    /// Message body (UTF-8). Required for SMS; optional for MMS, where it may
+    /// be at most 2048 characters.
+    public var text: String?
+    /// Deprecated. Accepted for compatibility but not delivered on most
+    /// messaging routes; do not use.
     public var subject: String?
+    /// Publicly reachable http(s) URLs of the media to send; non-empty.
     /// Presence makes this an MMS.
     public var mediaUrls: [String]?
 
     public init(
         fromNumber: String,
         toNumber: String,
-        text: String,
+        text: String? = nil,
         subject: String? = nil,
         mediaUrls: [String]? = nil
     ) {
@@ -88,19 +93,37 @@ public struct MessagingCampaignCreateRequest: Codable, Hashable, Sendable {
 
 /// Per-record value inside a ``MessageRecord``. Shape depends on the requested
 /// message type:
-/// - `sms`/`mms`: `sourceNumber`, `destinationNumber`, `direction`, `rate`, `message`
-/// - `dlr`: `sourceNumber`, `destinationNumber`
+/// - `sms`/`mms`: `sourceNumber`, `destinationNumber`, `direction`, `rate`, `number`, `message`
+/// - `dlr`: `sourceNumber`, `destinationNumber`, `messageText`, `transactionGUID`
+///   (plus `concatenatedMessage` on some receipts)
+/// - `mms` also carries `attachments` and `subject`; outbound `sms` carries `ip`.
 public struct MessageRecordValue: Codable, Hashable, Sendable {
+    /// Your number that sent the original message (dlr).
     public var sourceNumber: String?
+    /// Recipient of the original message (dlr).
     public var destinationNumber: String?
-    /// `"in"` or `"out"` (sms/mms only).
+    /// `"in"` or `"out"` (sms, mms).
     public var direction: String?
-    /// Billed rate per message (string for precision).
+    /// Rate charged for the message (sms, mms).
     public var rate: String?
-    /// Far-end number (sms/mms only).
+    /// The other party: sender of an inbound message, recipient of an
+    /// outbound one (sms, mms).
     public var number: String?
-    /// Message body (sms/mms only).
+    /// Message text (sms, mms). May be empty for an MMS that carried only media.
     public var message: String?
+    /// The delivery receipt as received, including its status (dlr).
+    public var messageText: String?
+    /// Id of the message this receipt is for (dlr).
+    public var transactionGUID: String?
+    /// Present on some receipts for multi-part messages (dlr).
+    public var concatenatedMessage: String?
+    /// mms only. Inbound: one object per media file, with `contentFile` and
+    /// `contentType`.
+    public var attachments: [JSONValue]?
+    /// Subject, if one was sent or received (mms).
+    public var subject: String?
+    /// Address the send request came from (outbound sms).
+    public var ip: String?
 }
 
 /// One row in ``MessageHistoryData/messages``.

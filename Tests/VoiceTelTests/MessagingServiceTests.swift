@@ -83,6 +83,44 @@ final class MessagingServiceTests: XCTestCase {
         } catch { XCTFail("unexpected: \(error)") }
     }
 
+    // v2.2.20 truth fix: text is optional for MMS — a media-only send is
+    // valid and must not put a text field onto the wire.
+    func testSendMediaOnlyMMS() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "POST",
+            path: "/v2.2/messages",
+            json: envelope(#"{"id":"prov-2","type":"mms","fromNumber":"2015550123","toNumber":"2125550000","parts":1,"mediaUrls":["https://example.com/cat.png"]}"#)
+        )
+        let r = try await client.messaging.send(MessageSendRequest(
+            fromNumber: "2015550123",
+            toNumber: "2125550000",
+            mediaUrls: ["https://example.com/cat.png"]
+        ))
+        XCTAssertEqual(r.type, "mms")
+
+        let dict = bodyDict(MockURLProtocol.capturedBody(method: "POST", path: "/v2.2/messages"))
+        XCTAssertNil(dict["text"])
+        XCTAssertEqual(dict["mediaUrls"] as? [String], ["https://example.com/cat.png"])
+    }
+
+    // v2.2.20: history records carry the full per-type field set in `value`.
+    func testHistoryValueFields() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/messages",
+            json: envelope(#"{"number":"2015550123","type":"dlr","fromTs":1,"toTs":2,"messages":[{"id":"d1","key":["2015550123",1700000000],"value":{"sourceNumber":"2015550123","destinationNumber":"2125550000","messageText":"DELIV","transactionGUID":"abc-123"}},{"id":"m2","key":["2125550000",1700000100],"value":{"number":"2125550000","direction":"in","message":"","subject":"Hello","attachments":[{"contentFile":"f.jpg","contentType":"image/jpeg"}]}},{"id":"s3","key":["2125550000",1700000200],"value":{"number":"2125550000","direction":"out","message":"hi","ip":"203.0.113.9"}}]}"#)
+        )
+        let r = try await client.messaging.history(options: HistoryOptions(number: "2015550123", type: "dlr"))
+        XCTAssertEqual(r.messages[0].value.messageText, "DELIV")
+        XCTAssertEqual(r.messages[0].value.transactionGUID, "abc-123")
+        XCTAssertNil(r.messages[0].value.concatenatedMessage)
+        XCTAssertEqual(r.messages[1].value.subject, "Hello")
+        XCTAssertEqual(r.messages[1].value.attachments?.count, 1)
+        XCTAssertEqual(r.messages[2].value.ip, "203.0.113.9")
+    }
+
     func testCreateBrand() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(

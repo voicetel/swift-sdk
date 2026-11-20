@@ -162,6 +162,134 @@ final class NumbersServiceTests: XCTestCase {
         do { _ = try await client.numbers.setLidb(number: "x", body: NumberLidbRequest(cnam: "")); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
 
+    // MARK: - Directory listing (v2.2.20)
+
+    func testGetDirectoryListing() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "GET",
+            path: "/v2.2/numbers/2015550123/directory-listing",
+            json: envelope(#"{"number":"2015550123","status":"listed","eligible":true,"listing":{"type":"B","name":"Acme Corp","streetNumber":"100","streetName":"Broadway","streetType":"St","streetSuffix":"","location":"Suite 900","city":"New York","state":"NY","zip":"10005","complex":false},"pending":null}"#)
+        )
+        let r = try await client.numbers.getDirectoryListing(number: "2015550123")
+        XCTAssertEqual(r.status, .listed)
+        XCTAssertEqual(r.eligible, true)
+        XCTAssertEqual(r.listing?.type, .business)
+        XCTAssertEqual(r.listing?.name, "Acme Corp")
+        XCTAssertEqual(r.listing?.zip, "10005")
+        XCTAssertEqual(r.listing?.complex, false)
+        XCTAssertNil(r.pending)
+        XCTAssertNil(r.orderId)
+    }
+
+    func testGetDirectoryListingFailure() async {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/numbers/x/directory-listing", statusCode: 404, json: "{}")
+        do { _ = try await client.numbers.getDirectoryListing(number: "x"); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
+    }
+
+    // PUT is accepted at once (202) and applied in the background.
+    func testSetDirectoryListing() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "PUT",
+            path: "/v2.2/numbers/2015550123/directory-listing",
+            statusCode: 202,
+            json: envelope(#"{"number":"2015550123","status":"pending","orderId":"1026472","listing":{"type":"B","name":"Acme Corp","streetNumber":"100","streetName":"Broadway","streetType":"St","streetSuffix":"","location":"Suite 900","city":"New York","state":"NY","zip":"10005"}}"#)
+        )
+        let r = try await client.numbers.setDirectoryListing(number: "2015550123", body: DirectoryListingRequest(
+            type: .business,
+            name: "Acme Corp",
+            streetNumber: "100",
+            streetName: "Broadway",
+            streetType: "St",
+            location: "Suite 900",
+            city: "New York",
+            state: "NY",
+            zip: "10005"
+        ))
+        XCTAssertEqual(r.status, .pending)
+        XCTAssertEqual(r.orderId, "1026472")
+
+        // Wire shape: request body carries the required fields verbatim.
+        let dict = bodyDict(MockURLProtocol.capturedBody(method: "PUT", path: "/v2.2/numbers/2015550123/directory-listing"))
+        XCTAssertEqual(dict["type"] as? String, "business")
+        XCTAssertEqual(dict["name"] as? String, "Acme Corp")
+        XCTAssertEqual(dict["city"] as? String, "New York")
+        XCTAssertEqual(dict["state"] as? String, "NY")
+        XCTAssertEqual(dict["zip"] as? String, "10005")
+    }
+
+    func testSetDirectoryListingResidence() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "PUT",
+            path: "/v2.2/numbers/2015550123/directory-listing",
+            statusCode: 202,
+            json: envelope(#"{"number":"2015550123","status":"pending","orderId":null,"listing":{"type":"R","firstName":"Jane","lastName":"Doe","city":"New York","state":"NY","zip":"10005"}}"#)
+        )
+        let r = try await client.numbers.setDirectoryListing(number: "2015550123", body: DirectoryListingRequest(
+            type: .residence,
+            firstName: "Jane",
+            lastName: "Doe",
+            city: "New York",
+            state: "NY",
+            zip: "10005"
+        ))
+        XCTAssertEqual(r.status, .pending)
+        XCTAssertNil(r.orderId)
+        XCTAssertEqual(r.listing?.firstName, "Jane")
+
+        let dict = bodyDict(MockURLProtocol.capturedBody(method: "PUT", path: "/v2.2/numbers/2015550123/directory-listing"))
+        XCTAssertEqual(dict["type"] as? String, "residence")
+        XCTAssertEqual(dict["firstName"] as? String, "Jane")
+        XCTAssertEqual(dict["lastName"] as? String, "Doe")
+    }
+
+    func testSetDirectoryListingFailure() async {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(method: "PUT", path: "/v2.2/numbers/x/directory-listing", statusCode: 409, json: "{}")
+        do {
+            _ = try await client.numbers.setDirectoryListing(number: "x", body: DirectoryListingRequest(type: .business, name: "Acme Corp", city: "New York", state: "NY", zip: "10005"))
+            XCTFail("expected")
+        } catch let e as APIError { XCTAssertEqual(e.kind, .conflict) } catch { XCTFail("unexpected: \(error)") }
+    }
+
+    // DELETE is accepted at once (202): a removal carries an orderId...
+    func testRemoveDirectoryListing() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "DELETE",
+            path: "/v2.2/numbers/2015550123/directory-listing",
+            statusCode: 202,
+            json: envelope(#"{"number":"2015550123","status":"removing","orderId":"1026473"}"#)
+        )
+        let r = try await client.numbers.removeDirectoryListing(number: "2015550123")
+        XCTAssertEqual(r.status, .removing)
+        XCTAssertEqual(r.orderId, "1026473")
+        XCTAssertNil(MockURLProtocol.capturedBody(method: "DELETE", path: "/v2.2/numbers/2015550123/directory-listing"))
+    }
+
+    // ...and cancelling a pending add leaves the number not_listed, no orderId.
+    func testRemoveDirectoryListingCancelsPendingAdd() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "DELETE",
+            path: "/v2.2/numbers/2015550123/directory-listing",
+            statusCode: 202,
+            json: envelope(#"{"number":"2015550123","status":"not_listed"}"#)
+        )
+        let r = try await client.numbers.removeDirectoryListing(number: "2015550123")
+        XCTAssertEqual(r.status, .notListed)
+        XCTAssertNil(r.orderId)
+    }
+
+    func testRemoveDirectoryListingFailure() async {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/numbers/x/directory-listing", statusCode: 404, json: "{}")
+        do { _ = try await client.numbers.removeDirectoryListing(number: "x"); XCTFail("expected") } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
+    }
+
     func testGetFax() async throws {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "GET", path: "/v2.2/numbers/2015550123/fax",
