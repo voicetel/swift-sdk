@@ -48,6 +48,9 @@ public final class VoiceTelClient: @unchecked Sendable {
     /// Resource service for the `e911` tag (emergency address provisioning).
     public private(set) lazy var e911: E911Service = E911Service(transport: transport)
 
+    /// Resource service for the `Fax` tag (sending faxes, history, PDF download).
+    public private(set) lazy var fax: FaxService = FaxService(transport: transport)
+
     /// Resource service for the `Gateways` tag (SIP outbound trunks).
     public private(set) lazy var gateways: GatewaysService = GatewaysService(transport: transport)
 

@@ -23,10 +23,12 @@ public final class ACLService: @unchecked Sendable {
     }
 
     /// `DELETE /v2.2/acl` — remove one or more CIDR entries.
-    /// No request body: the entries are sent as the required `cidrs` query
-    /// parameter (comma-separated). Returns a body (200) — not 204 No Content.
-    public func remove(cidrs: [String]) async throws -> AclRemoveData {
-        let q: [String: String?] = ["cidrs": cidrs.joined(separator: ",")]
-        return try await transport.request(.delete, path: "/v2.2/acl", query: q, responseType: AclRemoveData.self)
+    ///
+    /// Takes the same `{acl: [{cidr}]}` body as ``add(_:)`` (the live handler
+    /// ignores the old `cidrs` query parameter). Returns a body (200) — not
+    /// 204 No Content. On 409 the error body carries the entries that were
+    /// removed and the ones that failed.
+    public func remove(_ body: AclModifyRequest) async throws -> AclRemoveData {
+        try await transport.request(.delete, path: "/v2.2/acl", body: body, responseType: AclRemoveData.self)
     }
 }

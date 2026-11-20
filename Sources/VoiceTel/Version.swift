@@ -11,10 +11,10 @@ import Foundation
 /// Static identifiers and defaults baked into the VoiceTel SDK.
 public enum VoiceTel {
     /// Semantic version of this client library. Matches the API version it targets.
-    public static let sdkVersion = "2.2.20"
+    public static let sdkVersion = "2.2.21"
 
     /// VoiceTel REST API version this SDK targets.
-    public static let apiVersion = "v2.2.20"
+    public static let apiVersion = "v2.2.21"
 
     /// Production API endpoint. Override with ``VoiceTelClient/init(baseURL:apiKey:session:userAgent:maxRetries:)``.
     public static let defaultBaseURL = "https://api.voicetel.com"

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.2.21 — 2026-11-20
+
+Audit release tracking spec v2.2.21. Adds the Fax API and fixes the DELETE /acl wire shape.
+
+### Added
+- **Fax API** (5 operations, `client.fax`):
+  - `client.fax.numbers()` — every fax-capable number on the account with the email each delivers to (`destinationId` 0 = the account email).
+  - `client.fax.send(_:)` — submit a fax as hand-built `multipart/form-data` (1–10 PDF/DOC/DOCX documents, 8 MiB each and total). The required `Idempotency-Key` header is a client-generated UUID — pass yours via `FaxSendRequest.idempotencyKey` or let the SDK mint one; resubmitting the same documents with the same key returns the original job instead of sending twice. Rate limit 10/min/account (`Retry-After: 60`). Fax error envelopes may carry an extra `serverTime` field; it is preserved on `APIError.body`.
+  - `client.fax.history(_:)` — newest-first job history with cursor paging (`from` is the newer edge; defaults to the last 24 hours).
+  - `client.fax.get(id:)` — one job; poll until `status` is `sent` or `failed`.
+  - `client.fax.document(id:)` — the rendered PDF as raw `Data` (binary response, not JSON).
+- The transport gained a `requestMultipart` path (prebuilt form-data bodies) and a `requestRaw` path (binary responses returned undecoded); `Idempotency-Key` can now be caller-supplied.
+
+### Changed
+- **Breaking:** `client.acl.remove(_:)` now sends the same `{ acl: [{ cidr }] }` JSON body as `add(_:)` — the live handler never read the old `cidrs` query parameter.
+
 ## 2.2.20 — 2026-11-20
 
 Spec v2.2.20 sync. Adds the four new operations and tracks the truth fixes from spec v2.2.18–v2.2.20.

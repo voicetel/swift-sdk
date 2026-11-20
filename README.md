@@ -2,7 +2,7 @@
 
 The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all with Swift Concurrency and strongly-typed `Codable` models.
 
-![Version](https://img.shields.io/badge/version-2.2.20-blue)
+![Version](https://img.shields.io/badge/version-2.2.21-blue)
 ![Swift](https://img.shields.io/badge/swift-5.9%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
@@ -27,7 +27,7 @@ The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/
 ## ✨ Features
 
 ### 🛡️ Strongly Typed End-to-End
-- **Native Swift `Codable` structs** for every one of the 83 API operations — JSON encoded with `Foundation.JSONEncoder`, no reflection magic.
+- **Native Swift `Codable` structs** for every one of the 88 API operations — JSON encoded with `Foundation.JSONEncoder`, no reflection magic.
 - **Optionals for nullable request fields** — `Bool?` / `Int?` / `String?` distinguish "not set" from "zero" cleanly when PATCH-ing.
 - **Optionals for nullable response fields** — `forwardTo: String?` lets you tell apart "no forward configured" from an empty destination.
 - **Async / await throughout.** Every method is `async throws`; cancellation propagates from `Task` down to the HTTP layer.
@@ -45,6 +45,7 @@ The official Swift client for the [VoiceTel REST API](https://voicetel.com/docs/
 - **e911** — record provisioning, address validation, lookup, removal.
 - **Gateways** — list, create, update, delete, view bound numbers.
 - **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state, and messaging health (account overview, per-number live check, spam-blocked samples, alert-email setting).
+- **Fax** — list fax-capable numbers, send faxes (hand-built `multipart/form-data` with a client-generated UUID `Idempotency-Key` so retries never double-send), poll job history & status, download the rendered PDF as raw `Data`.
 - **Lookups** — CNAM, carrier & line type, and LRN dips.
 - **iNumbering** — inventory search, coverage queries, number orders, port-in submissions, port-out availability.
 - **Support** — ticket create / read / update / delete, threaded messages, replies.
@@ -143,6 +144,7 @@ let key = try await client.login(username: "1000000001", password: "hunter2")
 | ACL            | `client.acl`            | `try await client.acl.add(AclModifyRequest(acl: [...]))`                 |
 | Authentication | `client.authentication` | `try await client.authentication.update(AuthPutRequest(authType: 1))`    |
 | e911           | `client.e911`           | `try await client.e911.validate(E911AddressRequest(...))`                |
+| Fax            | `client.fax`            | `try await client.fax.send(FaxSendRequest(fromNumber: "2015550123", toNumber: "2125550123", documents: [FaxDocumentUpload(name: "contract.pdf", contentType: "application/pdf", data: pdfData)]))` |
 | Gateways       | `client.gateways`       | `try await client.gateways.list()`                                       |
 | iNumbering     | `client.iNumbering`     | `try await client.iNumbering.searchInventory(query: InventoryQuery(tnMask: "201"))` |
 | Lookups        | `client.lookups`        | `try await client.lookups.carrier(number: "2015550123")`                |

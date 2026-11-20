@@ -112,14 +112,69 @@ final class Transport: @unchecked Sendable {
         )
     }
 
+    /// Performs an HTTP request and returns the raw response bytes without
+    /// JSON envelope decoding — the binary-download path (e.g.
+    /// `GET /v2.2/faxes/{id}/document`). Error responses are still parsed
+    /// into an `APIError` like everywhere else.
+    func requestRaw(
+        _ method: HTTPMethod,
+        path: String,
+        query: [String: String?]? = nil,
+        requireAuth: Bool = true,
+        rawBody: Data? = nil,
+        contentType: String? = nil,
+        idempotencyKey: String? = nil
+    ) async throws -> Data {
+        try await sendRequest(
+            method: method,
+            path: path,
+            query: query,
+            body: nil,
+            requireAuth: requireAuth,
+            rawBody: rawBody,
+            contentType: contentType,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    /// Performs a `multipart/form-data` POST and decodes the JSON envelope of
+    /// the response — the upload path (e.g. `POST /v2.2/faxes`).
+    ///
+    /// `idempotencyKey` overrides the auto-generated `Idempotency-Key` header
+    /// (the Fax API requires a client-generated UUID there).
+    func requestMultipart<Response: Decodable>(
+        path: String,
+        form: MultipartFormData,
+        idempotencyKey: String? = nil,
+        responseType: Response.Type
+    ) async throws -> Response {
+        let raw = try await sendRequest(
+            method: .post,
+            path: path,
+            query: nil,
+            body: nil,
+            requireAuth: true,
+            rawBody: form.encode(),
+            contentType: form.contentTypeHeader,
+            idempotencyKey: idempotencyKey
+        )
+        return try decode(Response.self, fromEnvelope: raw)
+    }
+
     /// Lower-level send: handles auth header, retries, and surfaces an APIError on
     /// non-2xx. Returns the raw response bytes for further decoding.
+    ///
+    /// `rawBody` + `contentType` bypass JSON encoding (prebuilt multipart
+    /// bodies); `idempotencyKey` overrides the generated header value.
     private func sendRequest(
         method: HTTPMethod,
         path: String,
         query: [String: String?]?,
         body: Encodable?,
-        requireAuth: Bool
+        requireAuth: Bool,
+        rawBody: Data? = nil,
+        contentType: String? = nil,
+        idempotencyKey: String? = nil
     ) async throws -> Data {
         if requireAuth && (apiKey ?? "").isEmpty {
             throw APIError(
@@ -129,10 +184,10 @@ final class Transport: @unchecked Sendable {
         }
 
         let url = try buildURL(path: path, query: query)
-        let bodyData = try encodeBody(body)
+        let bodyData = try rawBody ?? encodeBody(body)
 
-        let idempotencyKey: String? = [.post, .put, .patch].contains(method)
-            ? UUID().uuidString : nil
+        let idempotencyKeyValue: String? = idempotencyKey
+            ?? ([.post, .put, .patch].contains(method) ? UUID().uuidString : nil)
 
         var attempt = 0
 
@@ -144,13 +199,13 @@ final class Transport: @unchecked Sendable {
             // No explicit Accept-Encoding: URLSession negotiates compression itself
             // and transparently decompresses; forcing "gzip" here would disable that.
             if let bodyData = bodyData {
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue(contentType ?? "application/json", forHTTPHeaderField: "Content-Type")
                 request.httpBody = bodyData
             }
             if requireAuth, let key = apiKey {
                 request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
             }
-            if let key = idempotencyKey {
+            if let key = idempotencyKeyValue {
                 request.setValue(key, forHTTPHeaderField: "Idempotency-Key")
             }
 
@@ -397,6 +452,73 @@ private let pathSegmentAllowedCharacters: CharacterSet = {
 /// unescaped, which would corrupt the path).
 func encodePathSegment(_ value: String) -> String {
     value.addingPercentEncoding(withAllowedCharacters: pathSegmentAllowedCharacters) ?? value
+}
+
+// MARK: - MultipartFormData
+
+/// One file part of a `multipart/form-data` body.
+struct MultipartFile {
+    /// Form field name (e.g. `"documents"`).
+    let name: String
+    /// File name as transmitted (e.g. `"contract.pdf"`).
+    let filename: String
+    /// MIME type of the part (e.g. `"application/pdf"`).
+    let contentType: String
+    /// Raw file bytes.
+    let data: Data
+}
+
+/// Hand-built `multipart/form-data` encoder.
+///
+/// Foundation offers no cross-platform form-data helper (Linux
+/// `FoundationNetworking` has no `URLRequest` convenience for it), so the
+/// body is assembled byte-for-byte here with a random boundary — no new
+/// dependencies.
+struct MultipartFormData {
+    var fields: [(name: String, value: String)] = []
+    var files: [MultipartFile] = []
+
+    /// Dashes are excluded from the random part: they close multipart
+    /// delimiters, and keeping them out guarantees the boundary cannot occur
+    /// inside a part's payload.
+    private let boundary: String
+
+    init(boundary: String = "voicetel-\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))") {
+        self.boundary = boundary
+    }
+
+    /// Value for the request's `Content-Type` header.
+    var contentTypeHeader: String { "multipart/form-data; boundary=\(boundary)" }
+
+    mutating func addField(name: String, value: String) {
+        fields.append((name, value))
+    }
+
+    mutating func addFile(_ file: MultipartFile) {
+        files.append(file)
+    }
+
+    /// Encodes the complete body: each part, then the closing boundary.
+    func encode() -> Data {
+        var out = Data()
+        func appendString(_ string: String) {
+            out.append(Data(string.utf8))
+        }
+        for field in fields {
+            appendString("--\(boundary)\r\n")
+            appendString("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
+            appendString("\(field.value)\r\n")
+        }
+        for file in files {
+            appendString("--\(boundary)\r\n")
+            appendString("Content-Disposition: form-data; name=\"\(file.name)\"; filename=\"\(file.filename)\"\r\n")
+            appendString("Content-Type: \(file.contentType)\r\n\r\n")
+            out.append(file.data)
+            appendString("\r\n")
+        }
+        appendString("--\(boundary)--\r\n")
+        return out
+    }
 }
 
 // MARK: - AnyEncodable

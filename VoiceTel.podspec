@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name             = 'VoiceTel'
-  s.version          = '2.2.20'
-  s.summary          = 'The official Swift SDK for the VoiceTel REST API (v2.2.20).'
+  s.version          = '2.2.21'
+  s.summary          = 'The official Swift SDK for the VoiceTel REST API (v2.2.21).'
   s.description      = <<-DESC
     The official Swift client for the VoiceTel REST API: provision numbers,
     place orders, validate e911, send messages, and manage your account.

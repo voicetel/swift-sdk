@@ -71,19 +71,43 @@ final class ACLServiceTests: XCTestCase {
             path: "/v2.2/acl",
             json: envelope(#"{"removed":[{"cidr":"1.2.3.4/32"}]}"#)
         )
-        let resp = try await client.acl.remove(cidrs: ["1.2.3.4/32"])
+        let resp = try await client.acl.remove(AclModifyRequest(acl: [CidrEntry(cidr: "1.2.3.4/32")]))
         XCTAssertEqual(resp.removed[0].cidr, "1.2.3.4/32")
-        // cidrs go on the query string; no request body.
-        let url = MockURLProtocol.allRequests().first?.url?.absoluteString ?? ""
-        XCTAssertTrue(url.contains("cidrs=1.2.3.4%2F32") || url.contains("cidrs=1.2.3.4/32"))
-        XCTAssertNil(MockURLProtocol.capturedBody(method: "DELETE", path: "/v2.2/acl"))
+        // Spec v2.2.21: the entries go in the same {acl:[{cidr}]} JSON body as
+        // add — the query string must be empty.
+        let url = MockURLProtocol.allRequests().first?.url
+        XCTAssertNil(url?.query)
+        let body = bodyDict(MockURLProtocol.capturedBody(method: "DELETE", path: "/v2.2/acl"))
+        XCTAssertEqual(body["acl"] as? [[String: String]], [["cidr": "1.2.3.4/32"]])
+    }
+
+    func testRemoveConflictBody() async throws {
+        let client = makeTestClient()
+        MockURLProtocol.enqueueJSON(
+            method: "DELETE",
+            path: "/v2.2/acl",
+            statusCode: 409,
+            json: #"{"status":"error","error":{"code":409,"message":"One or more ACL entries could not be removed"},"data":{"removed":[{"cidr":"203.0.113.0/24"}],"failed":[{"cidr":"203.0.113.9/32","reason":"DB delete failed"}]}}"#
+        )
+        do {
+            _ = try await client.acl.remove(AclModifyRequest(acl: [CidrEntry(cidr: "203.0.113.0/24")]))
+            XCTFail("expected")
+        } catch let e as APIError {
+            XCTAssertEqual(e.kind, .conflict)
+            let body = try XCTUnwrap(e.body as? [String: Any])
+            let data = try XCTUnwrap(body["data"] as? [String: Any])
+            let failed = try XCTUnwrap(data["failed"] as? [[String: Any]])
+            XCTAssertEqual(failed[0]["reason"] as? String, "DB delete failed")
+        } catch {
+            XCTFail("unexpected: \(error)")
+        }
     }
 
     func testRemoveFailure() async {
         let client = makeTestClient()
         MockURLProtocol.enqueueJSON(method: "DELETE", path: "/v2.2/acl", statusCode: 404, json: "{}")
         do {
-            _ = try await client.acl.remove(cidrs: [])
+            _ = try await client.acl.remove(AclModifyRequest(acl: []))
             XCTFail("expected")
         } catch is APIError {} catch { XCTFail("unexpected: \(error)") }
     }
