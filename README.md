@@ -71,7 +71,7 @@ Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/voicetel/swift-sdk", from: "2.2.15")
+    .package(url: "https://github.com/voicetel/swift-sdk", from: "2.2.21")
 ],
 targets: [
     .target(name: "App", dependencies: [
@@ -85,7 +85,7 @@ Or via Xcode: **File ▸ Add Packages…** and paste `https://github.com/voicete
 ### CocoaPods
 
 ```ruby
-pod 'VoiceTel', '~> 2.2.15'
+pod 'VoiceTel', '~> 2.2.21'
 ```
 
 Requires Swift 5.9+ and one of: macOS 12+, iOS 15+, tvOS 15+, watchOS 8+, or any Linux distribution supported by the official Swift toolchain.
